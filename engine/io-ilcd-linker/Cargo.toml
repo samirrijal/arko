@@ -20,6 +20,7 @@ arko-io-ilcd.workspace = true
 
 [dev-dependencies]
 arko-core.workspace = true
+arko-differential.workspace = true
 arko-methods.workspace = true
 arko-solvers-dense.workspace = true
 sprs.workspace = true
