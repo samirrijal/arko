@@ -1,88 +1,51 @@
-//! Real-data smoke test against a downloaded OEKOBAUDAT bundle.
+//! Real-data smoke test against a downloaded EU JRC **Environmental
+//! Footprint reference package** (EF 3.x).
 //!
-//! # Why this test is `#[ignore]`-gated
+//! # Why this is a Week-5 generalisation test
 //!
-//! OEKOBAUDAT is published under **CC-BY-ND-3.0-DE** — we may use it
-//! for testing but we cannot redistribute or commit it. So the bundle
-//! lives on the maintainer's disk, not in the repo, and this test only
-//! runs when the maintainer explicitly asks for it.
+//! The EF reference packages are the JRC's blessed background data
+//! for PEF (Product Environmental Footprint) and EN 15804+A2
+//! downstream data. Every European compliance story eventually names
+//! them. If our ILCD reader passes ÖKOBAUDAT and Agribalyse but trips
+//! on EF, we have a problem — EF is closer to the canonical ILCD
+//! spec than either of the other two.
+//!
+//! Unlike ÖKOBAUDAT (ILCD+EPD v1.2 superset) and Agribalyse (plain
+//! ILCD, agriculture focus), EF ships LCIA method datasets alongside
+//! the process / flow / unit-group files. At v0.1 we deliberately
+//! ignore `<LCIAMethodDataSet>` (it's the `arko-methods` crate's
+//! concern, not the linker's). This test asserts the **process
+//! pipeline** works on EF; method ingestion lands in Phase 1 Week 6.
 //!
 //! # How to run locally
 //!
-//! 1. Download the OEKOBAUDAT full dataset from
-//!    <https://www.oekobaudat.de/> (choose "OBD_2024" or latest,
-//!    format: ILCD XML, ZIP).
-//! 2. Unzip so you have the standard layout:
-//!    `<bundle>/processes/*.xml`, `<bundle>/flows/*.xml`,
-//!    `<bundle>/flowproperties/*.xml`, `<bundle>/unitgroups/*.xml`.
-//!    The extracted tree can live anywhere; the convention for
-//!    in-repo extraction is
-//!    `engine/io-ilcd-linker/tests/fixtures/external/oekobaudat/`
-//!    (already gitignored).
-//! 3. Point the test at it and run:
+//! 1. Download the current **EF reference package** from
+//!    <https://eplca.jrc.ec.europa.eu/EnvironmentalFootprint.html>
+//!    (EU JRC, free, registration-gated). Pick the ILCD-format zip,
+//!    e.g. `EF_reference_package_3.1` or newer.
+//! 2. Unzip into the standard ILCD layout (`<root>/processes/*.xml`,
+//!    `flows/`, `flowproperties/`, `unitgroups/`). Convention:
+//!    `engine/io-ilcd-linker/tests/fixtures/external/ef_reference/`
+//!    (already gitignored — we do not redistribute).
+//! 3. Point the test at it:
 //!
 //!    ```bash
-//!    OEKOBAUDAT_BUNDLE=/path/to/bundle cargo test -p arko-io-ilcd-linker \
-//!      --test oekobaudat_smoke -- --ignored --nocapture
+//!    EF_REFERENCE_BUNDLE=/path/to/bundle cargo test -p arko-io-ilcd-linker \
+//!      --test ef_reference_smoke -- --ignored --nocapture
 //!    ```
 //!
-//! # What this test asserts
+//! # What this asserts
 //!
-//! Not impact-result-level checks (those need LCIA methods, which are a
-//! later Phase 1 ticket). Instead, invariants that exercise the full
-//! `arko-io-ilcd` → `arko-io-ilcd-linker` pipeline on real-world
-//! diversity:
+//! Same invariants as the ÖKOBAUDAT and Agribalyse smokes: every
+//! process parses cleanly, every linkable process pipelines through
+//! `build_typed_column` with zero engine-level errors, and every
+//! exchange carries a non-empty reference unit. Bundle gaps
+//! (missing XML cross-refs) are tolerated.
 //!
-//! - Every `processes/*.xml` parses cleanly (zero `parse_process`
-//!   errors). A parse failure is an engine bug.
-//! - Every process that links to flows present in the bundle pipelines
-//!   cleanly through `build_typed_column` (zero *bridge* failures that
-//!   are not "flow file not found" I/O errors).
-//! - Every surviving `TypedColumn` has at least one exchange, exactly
-//!   one reference flow, and every exchange carries a non-empty
-//!   `reference_unit.unit_name`.
-//!
-//! Failures caused by **missing flow files in the bundle itself** are
-//! counted but do not fail the test — ÖKOBAUDAT-2024-I publishes
-//! ~105 processes that reference flow UUIDs it doesn't ship. That is
-//! a publisher-side data-integrity issue, not an engine bug; the
-//! engine correctly refuses to invent a unit out of thin air.
-//!
-//! A summary line is printed (`--nocapture`) so the maintainer can
-//! eyeball the distribution of units and flow types — useful when
-//! deciding which specific UUIDs to promote to stricter
-//! known-value assertions later.
-//!
-//! # Observed 2024-I gap characterisation
-//!
-//! One-shot analysis run on 2026-04-19 against
-//! `OBD_2024_I_2026-04-19T10_22_04`: 105 / 3,075 publisher-side gaps
-//! decompose into **93 missing flow XMLs**, **9 missing flow-property
-//! XMLs**, and **3 flows with no unit derivation path** (no
-//! `<quantitativeReference>` on the flow, no inline
-//! `<epd:referenceToUnitGroupDataSet>` on any referrer).
-//!
-//! Category concentration, by top-level `<common:class level="0">` of
-//! the failing process: **`03 Gebäudetechnik` / Building services
-//! engineering ≈ 46 %** and **`02 Bauprodukte` / Building products
-//! ≈ 41 %**. The remaining 13 % are spread across mineral building
-//! materials, plastics, metals, and wood. Building-services
-//! concentration is expected — HVAC / fittings draw most heavily on
-//! proprietary upstream datasets — but the magnitude is worth
-//! reporting upstream if ÖKOBAUDAT editorial is interested in it.
-//!
-//! No dominant single missing flow UUID: 89 unique UUIDs across the
-//! 93 I/O misses (at most 2× repetition). The cause is scattered
-//! editorial gaps, not one omitted editorial batch. A faint signal:
-//! four of the repeated missing UUIDs share a MAC-suffix
-//! (`-08dac809370b`), suggesting a UUID-v1 batch from one editor
-//! session whose flow records never shipped. Not actionable from our
-//! side; worth surfacing to the ÖKOBAUDAT editors as a data-integrity
-//! note.
-//!
-//! The engine cannot self-repair these gaps. Refusing to invent a
-//! unit and classifying the row as `LinkError::Io` or
-//! `LinkError::FlowHasNoUnitDerivation` is the correct behaviour.
+//! Expectation: EF reference package is the cleanest of the three
+//! (it's the spec-author's own bundle). A non-trivial gap count
+//! here, or any engine failure, almost certainly indicates a real
+//! reader bug rather than a publisher issue.
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -91,14 +54,14 @@ use std::path::PathBuf;
 use arko_io_ilcd::parse_process;
 use arko_io_ilcd_linker::{build_typed_column, DirectoryBundle};
 
-const BUNDLE_ENV_VAR: &str = "OEKOBAUDAT_BUNDLE";
+const BUNDLE_ENV_VAR: &str = "EF_REFERENCE_BUNDLE";
 
 #[test]
-#[ignore = "requires OEKOBAUDAT bundle on disk; set OEKOBAUDAT_BUNDLE env var"]
-fn oekobaudat_full_bundle_smoke() {
+#[ignore = "requires EF reference package on disk; set EF_REFERENCE_BUNDLE env var"]
+fn ef_reference_full_bundle_smoke() {
     let bundle_root = std::env::var(BUNDLE_ENV_VAR).unwrap_or_else(|_| {
         panic!(
-            "{BUNDLE_ENV_VAR} not set; point it at an unpacked OEKOBAUDAT bundle \
+            "{BUNDLE_ENV_VAR} not set; point it at an unpacked EF reference package \
              (see test module docs for instructions)"
         )
     });
@@ -129,12 +92,7 @@ fn oekobaudat_full_bundle_smoke() {
     let mut exchanges_total: usize = 0;
     let mut unit_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut flow_type_counts: BTreeMap<String, usize> = BTreeMap::new();
-    // Engine-level failures: parse errors, or bridge errors that are
-    // NOT "flow file not found in bundle". These must be zero — they
-    // represent real engine bugs.
     let mut engine_failures: Vec<(PathBuf, String)> = Vec::new();
-    // Bundle-level data gaps: bridge tried to resolve a flow whose XML
-    // isn't in the bundle. Counted but tolerated.
     let mut data_gap_failures: Vec<(PathBuf, String)> = Vec::new();
 
     for path in &process_xmls {
@@ -155,11 +113,6 @@ fn oekobaudat_full_bundle_smoke() {
         let column = match build_typed_column(&dataset, &resolver) {
             Ok(c) => c,
             Err(e) => {
-                // I/O-missing-file errors on flow / flowproperty /
-                // unitgroup resolution are publisher data gaps, not
-                // engine bugs. Classify by the error's text shape:
-                // the concrete LinkError::Io variant's Display starts
-                // with "I/O error reading".
                 let msg = format!("build_typed_column: {e}");
                 if matches!(
                     e,
@@ -210,7 +163,7 @@ fn oekobaudat_full_bundle_smoke() {
         processes_ok += 1;
     }
 
-    println!("--- oekobaudat_full_bundle_smoke ---");
+    println!("--- ef_reference_full_bundle_smoke ---");
     println!(
         "processes: {processes_ok}/{} ok, {} engine failures, {} bundle data gaps",
         process_xmls.len(),
