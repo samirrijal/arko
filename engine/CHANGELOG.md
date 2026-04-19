@@ -101,6 +101,33 @@ reference unit and flow type.
   `LinkError::Io` bubble-up when the exchange's flow isn't in the
   bundle).
 
+### Added — OEKOBAUDAT real-data smoke harness (Phase 1, Week 4)
+
+The Week 4 checkpoint from the Execution Guide: exercise the full
+`arko-io-ilcd` → `arko-io-ilcd-linker` pipeline on a real EU public
+database, not just the synthetic bundle.
+
+- New integration test `tests/oekobaudat_smoke.rs` —
+  `#[ignore]`-attributed and env-var-gated. Reads
+  `OEKOBAUDAT_BUNDLE=<path>`, walks every `processes/*.xml`, parses
+  each, builds the typed column through the linker, and asserts
+  pipeline invariants (non-empty exchanges, exactly one reference
+  exchange per column, non-empty reference-unit name everywhere).
+  Prints a unit-distribution and flow-type-distribution summary with
+  `--nocapture` — a shape-survey of whatever the current OEKOBAUDAT
+  release contains, useful for deciding which specific UUIDs are
+  stable enough for stricter known-value assertions later.
+- **Not committed to the repo**: OEKOBAUDAT is CC-BY-ND-3.0-DE. The
+  maintainer downloads the bundle, unzips it, and points the env var
+  at the root. `.gitignore` excludes
+  `engine/**/tests/fixtures/external/` for the convention location.
+  CI does not run this test (it's `#[ignore]`d); maintainers run it
+  before tagging releases.
+- Stricter known-value assertions (e.g. a named concrete-mix process
+  with an expected GWP100 contribution) are deferred until LCIA
+  method support lands — those tests can't be written without
+  `arko-methods` consuming impact-factor tables.
+
 ### Deferred from this crate (→ v0.2)
 
 - Source and Contact datasets (pure provenance; off the unit-

@@ -58,6 +58,12 @@ tmp/
 engine/benches/results/
 engine/differential/reports/
 
+# ---- External test bundles (licensed third-party data) ----
+# OEKOBAUDAT, EPDX, OpenLCA JSON-LD etc. — not redistributable under
+# CC-BY-ND-3.0-DE and equivalents. Download locally, point tests at the
+# path via env var (see tests/oekobaudat_smoke.rs).
+engine/**/tests/fixtures/external/
+
 # ---- Local databases / caches ----
 *.sqlite
 *.sqlite-journal
