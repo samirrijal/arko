@@ -7,6 +7,99 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — cross-implementation parity smoke on real EF data (Phase 1, Week 5)
+
+New test at
+[`engine/io-ilcd-linker/tests/ef_carpet_parity_smoke.rs`](io-ilcd-linker/tests/ef_carpet_parity_smoke.rs)
+wires the carpet LCI through `arko-differential::run_single_vector`
+with a reference value produced by an **independent** Python
+implementation. Closes the "we produce a finite number, but is it the
+right one" gap that [`ef_carpet_calc_smoke`](io-ilcd-linker/tests/ef_carpet_calc_smoke.rs)
+deliberately left open.
+
+**Independence posture of the reference.** The Python reference at
+`scratch/parity/carpet_reference.py` (not shipped; maintainer-local)
+uses a different XML parser (`lxml` vs Arko's `roxmltree` / `quick-xml`),
+a different CAS matcher (plain Python dict vs Arko's
+`FactorMatch::CasOrigin`), a reimplemented basename-parenthetical
+origin rule, and plain `sum()` arithmetic vs Arko's sparse matvec + LU
+solve. The two paths share **only** the AR6 WG1 Ch7 Table 7.15 factor
+values, which are tabulated IPCC constants. A pass therefore
+exercises flow-matching, amount extraction, CF lookup, and arithmetic
+wiring against an independently-written engine — not the factor
+values themselves (those stay covered by the hand-calc seed vectors
+in `arko-differential::seed`).
+
+**Tolerance class.** `ToleranceClass::CrossImpl`
+(`ε_abs = 1e-9`, `ε_rel = 1e-6`). The reference did not come from
+Arko itself, so `ReferenceParity` would over-claim; `CrossImpl` is
+the right level for this kind of witness.
+
+**Scope bound the test respects.** Carpet is a pre-aggregated LCI
+result (`A = 1×1`), so the parity check is
+**flow-matching + characterization**, not LU factorization. The
+LU path stays covered by the hand-calc `l1_coupled_two_process` seed
+vector; a multi-process ÖKOBAUDAT parity vector is the next
+follow-up. Explicitly called out in the test module docs so the
+claim this evidence produces is properly bounded.
+
+**Dev-dep change.** `arko-io-ilcd-linker` now takes
+`arko-differential` as a dev-dependency (was previously only
+`arko-core` / `arko-methods` / `arko-solvers-dense` / `sprs`).
+
+### Observed — AR6 GWP100 parity against independent Python reference (Phase 1, Week 5)
+
+First external-witness parity on real JRC EF data. Run 2026-04-19
+against the same carpet LCI as the prior calc smoke (process
+`972cd3cd-25bf-4b70-96e9-eab4bed329f7`).
+
+|                               | value                         |
+|-------------------------------|-------------------------------|
+| Arko impact (AR6 GWP100)      | `9.180243685487213e0` kg CO2-eq / m² |
+| Python reference (AR6 GWP100) | `9.180243685487213e0` kg CO2-eq / m² |
+| max \|deviation\|             | `0.000e0`                     |
+| max relative deviation        | `0.000e0`                     |
+| tolerance applied             | `eps_abs=1e-9, eps_rel=1e-6`  |
+| verdict                       | **PASS**                      |
+
+Bit-exact agreement on the summed impact. Both implementations
+matched the same 44 flows out of 20,288 elementary flows (one CO2,
+one CH4-fossil, etc. each contributing in the same order), and
+IEEE-754 double arithmetic happens to accumulate to the same word
+under both paths. A deviation of exactly zero is more than the
+`CrossImpl` class requires; it does **not** prove the two paths are
+mathematically equivalent, only that on this particular input they
+agreed to the last bit.
+
+**What this supports.** The end-to-end pipeline from ILCD reader
+→ linker `TypedColumn` → `FlowMeta` bridge → `build_c_matrix`
+→ `compute()` → `result.impact[0]` produces the same AR6 GWP100
+number as a reader/matcher/arithmetic stack written independently
+from the same IPCC factor table. Flow-matching is correct at
+scale (20k-flow inventory), amount extraction is correct across
+the 44 matched cells, and arithmetic wiring doesn't introduce
+subtle pipeline losses.
+
+**What this still does *not* support.** Methodology correctness of
+the AR6 factor values themselves (not tested here; shared between
+implementations); parity on multi-process systems with LU
+factorization (carpet is a pre-aggregated 1×1 LCI); parity across
+multiple EF processes (still N=1); parity against a *third*
+independent engine such as Brightway 2.5 or OpenLCA. The last item
+is explicitly deferred: `D-0012` reminds us the EF 3.1 LCI bundle is
+not a redistributable reference dataset, so comparison artifacts
+stay internal.
+
+Reproducible by setting `EF_REFERENCE_BUNDLE` and running the test
+under `--ignored --nocapture`.
+
+**License posture.** Same Sphera-hosted LCI bundle as the prior
+calc smoke; see that entry and `D-0012`. The Python reference
+script and this parity smoke are internal evidence artifacts, not
+redistributable content — the carpet process UUID and impact number
+appearing here are internal engineering records consistent with the
+maintainer-download / no-redistribution posture.
+
 ### Changed — V1 open-EU-database slate refined (Phase 1, Week 5)
 
 Weekend-of-2026-04-19 research while preparing the Week 5 generalisation
