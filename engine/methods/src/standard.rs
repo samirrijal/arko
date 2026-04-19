@@ -102,7 +102,11 @@ fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
     let mut factors = Vec::new();
 
     // CO2 — reference.
-    factors.push(cas_factor("124-38-9", 1.0, "Carbon dioxide (CO2), AR6 reference"));
+    factors.push(cas_factor(
+        "124-38-9",
+        1.0,
+        "Carbon dioxide (CO2), AR6 reference",
+    ));
 
     // CH4 — split by origin. Order matters for the tests that read
     // factors[1] / factors[2]; keep fossil before non-fossil.
@@ -127,8 +131,16 @@ fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
     ));
 
     // Fluorinated gases.
-    factors.push(cas_factor("2551-62-4", 25_200.0, "Sulfur hexafluoride (SF6)"));
-    factors.push(cas_factor("7783-54-2", 17_400.0, "Nitrogen trifluoride (NF3)"));
+    factors.push(cas_factor(
+        "2551-62-4",
+        25_200.0,
+        "Sulfur hexafluoride (SF6)",
+    ));
+    factors.push(cas_factor(
+        "7783-54-2",
+        17_400.0,
+        "Nitrogen trifluoride (NF3)",
+    ));
 
     // HFCs.
     factors.push(cas_factor(
@@ -166,8 +178,16 @@ fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
 fn ar5_gwp100_factors() -> Vec<CharacterizationFactor> {
     let entries: &[(&str, f64, &str)] = &[
         ("124-38-9", 1.0, "Carbon dioxide (CO2), AR5 reference"),
-        ("74-82-8", 28.0, "Methane (CH4) — AR5 WG1 Ch8 T8.A.1 (no c-c fb)"),
-        ("10024-97-2", 265.0, "Nitrous oxide (N2O) — AR5 WG1 Ch8 T8.A.1"),
+        (
+            "74-82-8",
+            28.0,
+            "Methane (CH4) — AR5 WG1 Ch8 T8.A.1 (no c-c fb)",
+        ),
+        (
+            "10024-97-2",
+            265.0,
+            "Nitrous oxide (N2O) — AR5 WG1 Ch8 T8.A.1",
+        ),
         ("2551-62-4", 23_500.0, "Sulfur hexafluoride (SF6)"),
         ("7783-54-2", 16_100.0, "Nitrogen trifluoride (NF3)"),
         ("811-97-2", 1_300.0, "HFC-134a"),
@@ -220,9 +240,7 @@ mod tests {
             .factors
             .iter()
             .filter_map(|f| match &f.match_on {
-                FactorMatch::Cas { cas } | FactorMatch::CasOrigin { cas, .. } => {
-                    Some(cas.clone())
-                }
+                FactorMatch::Cas { cas } | FactorMatch::CasOrigin { cas, .. } => Some(cas.clone()),
                 _ => None,
             })
             .collect();
@@ -249,10 +267,12 @@ mod tests {
         let fossil = m.categories[0]
             .factors
             .iter()
-            .find(|f| matches!(
-                &f.match_on,
-                FactorMatch::CasOrigin { cas, origin: FlowOrigin::Fossil } if cas == "74-82-8"
-            ))
+            .find(|f| {
+                matches!(
+                    &f.match_on,
+                    FactorMatch::CasOrigin { cas, origin: FlowOrigin::Fossil } if cas == "74-82-8"
+                )
+            })
             .expect("fossil CH4 factor missing");
         let nonfossil = m.categories[0]
             .factors

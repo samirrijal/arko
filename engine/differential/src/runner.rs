@@ -144,10 +144,7 @@ fn compute_highest_level(per_vector: &[VectorResult]) -> Option<ConformanceLevel
 
     let mut highest: Option<ConformanceLevel> = None;
     for &lvl in &levels {
-        let relevant: Vec<&VectorResult> = per_vector
-            .iter()
-            .filter(|r| r.level <= lvl)
-            .collect();
+        let relevant: Vec<&VectorResult> = per_vector.iter().filter(|r| r.level <= lvl).collect();
         // If there are no vectors at or below this level, skip.
         if relevant.is_empty() {
             continue;

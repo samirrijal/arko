@@ -12,10 +12,7 @@ fn parses_cement_fixture() {
         ds.process_information.uuid,
         "11111111-2222-3333-4444-555555555555"
     );
-    assert_eq!(
-        ds.process_information.base_name,
-        "Portland cement, CEM I"
-    );
+    assert_eq!(ds.process_information.base_name, "Portland cement, CEM I");
     assert_eq!(
         ds.process_information.treatment_standards_routes.as_deref(),
         Some("average Spanish plant, dry process")
@@ -61,7 +58,10 @@ fn parses_input_exchange_with_parameter_binding() {
         elec.reference_to_variable.as_deref(),
         Some("elec_intensity")
     );
-    assert_eq!(elec.data_derivation_type_status.as_deref(), Some("Calculated"));
+    assert_eq!(
+        elec.data_derivation_type_status.as_deref(),
+        Some("Calculated")
+    );
     assert_eq!(
         elec.flow_uri.as_deref(),
         Some("../flows/aaaaaaaa-0000-0000-0000-000000000002.xml")
@@ -175,7 +175,10 @@ fn rejects_unknown_exchange_direction() {
     let err = parse_process(xml).unwrap_err();
     assert!(matches!(
         err,
-        IlcdError::InvalidText { elem: "exchangeDirection", .. }
+        IlcdError::InvalidText {
+            elem: "exchangeDirection",
+            ..
+        }
     ));
 }
 
@@ -204,7 +207,10 @@ fn rejects_nonfinite_amount() {
     let err = parse_process(xml).unwrap_err();
     assert!(matches!(
         err,
-        IlcdError::NumericNonfinite { field: "meanAmount", .. }
+        IlcdError::NumericNonfinite {
+            field: "meanAmount",
+            ..
+        }
     ));
 }
 

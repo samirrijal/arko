@@ -28,13 +28,26 @@ pub enum Distribution {
     /// of the distribution) and geometric standard deviation
     /// (dimensionless; equals `exp(σ)` where σ is the underlying
     /// normal's sd). A `geometric_sd` of 1.0 degenerates to a point.
-    LogNormal { geometric_mean: f64, geometric_sd: f64 },
+    LogNormal {
+        geometric_mean: f64,
+        geometric_sd: f64,
+    },
 
-    Normal { mean: f64, sd: f64 },
+    Normal {
+        mean: f64,
+        sd: f64,
+    },
 
-    Triangular { min: f64, mode: f64, max: f64 },
+    Triangular {
+        min: f64,
+        mode: f64,
+        max: f64,
+    },
 
-    Uniform { min: f64, max: f64 },
+    Uniform {
+        min: f64,
+        max: f64,
+    },
 
     /// Beta-PERT. `lambda` controls the mode's weight; ecoinvent-style
     /// defaults to `4.0`.
@@ -247,8 +260,15 @@ mod tests {
 
     #[test]
     fn validate_catches_bad_normal() {
-        assert!(Distribution::Normal { mean: 0.0, sd: 0.0 }.validate().is_err());
-        assert!(Distribution::Normal { mean: 0.0, sd: -1.0 }.validate().is_err());
+        assert!(Distribution::Normal { mean: 0.0, sd: 0.0 }
+            .validate()
+            .is_err());
+        assert!(Distribution::Normal {
+            mean: 0.0,
+            sd: -1.0
+        }
+        .validate()
+        .is_err());
     }
 
     #[test]
@@ -264,13 +284,26 @@ mod tests {
 
     #[test]
     fn validate_catches_bad_uniform() {
-        assert!(Distribution::Uniform { min: 10.0, max: 10.0 }.validate().is_err());
-        assert!(Distribution::Uniform { min: 10.0, max: 5.0 }.validate().is_err());
+        assert!(Distribution::Uniform {
+            min: 10.0,
+            max: 10.0
+        }
+        .validate()
+        .is_err());
+        assert!(Distribution::Uniform {
+            min: 10.0,
+            max: 5.0
+        }
+        .validate()
+        .is_err());
     }
 
     #[test]
     fn normal_samples_stay_close_to_mean() {
-        let d = Distribution::Normal { mean: 100.0, sd: 1.0 };
+        let d = Distribution::Normal {
+            mean: 100.0,
+            sd: 1.0,
+        };
         let mut r = rng();
         let sum: f64 = (0..10_000).map(|_| d.sample(&mut r).unwrap()).sum();
         let mean = sum / 10_000.0;
@@ -324,16 +357,16 @@ mod tests {
                 geometric_mean: 10.0,
                 geometric_sd: 1.5,
             },
-            Distribution::Normal {
-                mean: 0.0,
-                sd: 1.0,
-            },
+            Distribution::Normal { mean: 0.0, sd: 1.0 },
             Distribution::Triangular {
                 min: 0.0,
                 mode: 5.0,
                 max: 10.0,
             },
-            Distribution::Uniform { min: -1.0, max: 1.0 },
+            Distribution::Uniform {
+                min: -1.0,
+                max: 1.0,
+            },
             Distribution::Pert {
                 min: 0.0,
                 mode: 3.0,

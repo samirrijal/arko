@@ -8,8 +8,7 @@
 use crate::{
     error::Ecospold2Error,
     model::{
-        Activity, ActivityDataset, Direction, ElementaryExchange, Geography,
-        IntermediateExchange,
+        Activity, ActivityDataset, Direction, ElementaryExchange, Geography, IntermediateExchange,
     },
 };
 use roxmltree::{Document, Node};
@@ -100,11 +99,8 @@ fn parse_intermediate_exchange(
     node: &Node<'_, '_>,
 ) -> Result<IntermediateExchange, Ecospold2Error> {
     let id = attr_required(node, "intermediateExchange", "id")?;
-    let intermediate_exchange_id = attr_required(
-        node,
-        "intermediateExchange",
-        "intermediateExchangeId",
-    )?;
+    let intermediate_exchange_id =
+        attr_required(node, "intermediateExchange", "intermediateExchangeId")?;
     let activity_link_id = attr_opt(node, "activityLinkId").filter(|s| !s.is_empty());
     let amount = attr_parse_finite(node, "intermediateExchange", "amount")?;
     let unit_name = attr_required(node, "intermediateExchange", "unitName")?;
@@ -123,15 +119,9 @@ fn parse_intermediate_exchange(
     })
 }
 
-fn parse_elementary_exchange(
-    node: &Node<'_, '_>,
-) -> Result<ElementaryExchange, Ecospold2Error> {
+fn parse_elementary_exchange(node: &Node<'_, '_>) -> Result<ElementaryExchange, Ecospold2Error> {
     let id = attr_required(node, "elementaryExchange", "id")?;
-    let elementary_exchange_id = attr_required(
-        node,
-        "elementaryExchange",
-        "elementaryExchangeId",
-    )?;
+    let elementary_exchange_id = attr_required(node, "elementaryExchange", "elementaryExchangeId")?;
     let amount = attr_parse_finite(node, "elementaryExchange", "amount")?;
     let unit_name = attr_required(node, "elementaryExchange", "unitName")?;
     let cas_number = attr_opt(node, "casNumber");
@@ -198,10 +188,7 @@ fn parse_group(node: &Node<'_, '_>, elem: &'static str) -> Result<u8, Ecospold2E
 
 // ---- helpers ----------------------------------------------------------
 
-fn first_child<'a, 'input>(
-    node: &Node<'a, 'input>,
-    names: &[&str],
-) -> Option<Node<'a, 'input>> {
+fn first_child<'a, 'input>(node: &Node<'a, 'input>, names: &[&str]) -> Option<Node<'a, 'input>> {
     node.children()
         .find(|n| n.is_element() && names.iter().any(|name| n.has_tag_name(*name)))
 }

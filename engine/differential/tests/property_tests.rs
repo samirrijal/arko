@@ -33,8 +33,16 @@ fn block_diagonal_independence_holds_for_two_seed_studies() {
     // by the property. `l1_identity_single_impact` and
     // `l1_coupled_two_process` both carry the single gwp100 row.
     let vs = seed_vectors();
-    let s1 = &vs.iter().find(|v| v.id == "l1_identity_single_impact").unwrap().study;
-    let s2 = &vs.iter().find(|v| v.id == "l1_coupled_two_process").unwrap().study;
+    let s1 = &vs
+        .iter()
+        .find(|v| v.id == "l1_identity_single_impact")
+        .unwrap()
+        .study;
+    let s2 = &vs
+        .iter()
+        .find(|v| v.id == "l1_coupled_two_process")
+        .unwrap()
+        .study;
     check_block_diagonal_independence(s1, s2, &DenseLuSolver)
         .expect("block-diagonal independence must hold for two independent studies");
 }

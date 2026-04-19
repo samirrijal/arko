@@ -37,7 +37,5 @@ pub mod registry;
 pub mod standard;
 
 pub use builder::{build_c_matrix, CMatrixBuild, CMatrixError};
-pub use method::{
-    CharacterizationFactor, FactorMatch, ImpactCategory, ImpactMethod,
-};
+pub use method::{CharacterizationFactor, FactorMatch, ImpactCategory, ImpactMethod};
 pub use registry::{MethodNotFound, MethodRegistry};

@@ -105,9 +105,7 @@ fn l1_identity_single_impact() -> TestVector {
     TestVector {
         id: "l1_identity_single_impact".into(),
         level: ConformanceLevel::L1Basic,
-        description:
-            "Identity technosphere, single process emitting 2 kg CO2, CF=1 → h=[2]"
-                .into(),
+        description: "Identity technosphere, single process emitting 2 kg CO2, CF=1 → h=[2]".into(),
         study,
         expected_h: vec![2.0],
         tolerance_class: ToleranceClass::ReferenceParity,
@@ -208,7 +206,9 @@ fn l1_two_process_independent() -> TestVector {
     TestVector {
         id: "l1_two_process_independent".into(),
         level: ConformanceLevel::L1Basic,
-        description: "Two independent processes, demand only on p1 (fossil CH4) → h = 0.1 · 29.8 = 2.98".into(),
+        description:
+            "Two independent processes, demand only on p1 (fossil CH4) → h = 0.1 · 29.8 = 2.98"
+                .into(),
         study,
         expected_h: vec![2.98],
         tolerance_class: ToleranceClass::ReferenceParity,

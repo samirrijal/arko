@@ -23,9 +23,7 @@ pub fn parse_process(xml: &str) -> Result<ProcessDataset, IlcdError> {
     let root = doc.root_element();
 
     if !root.has_tag_name("processDataSet") {
-        return Err(IlcdError::UnexpectedRoot(
-            root.tag_name().name().to_owned(),
-        ));
+        return Err(IlcdError::UnexpectedRoot(root.tag_name().name().to_owned()));
     }
 
     let process_information = parse_process_information(&root)?;
@@ -94,9 +92,7 @@ fn parse_process_information(root: &Node<'_, '_>) -> Result<ProcessInformation, 
     })
 }
 
-fn parse_quantitative_reference(
-    root: &Node<'_, '_>,
-) -> Result<QuantitativeReference, IlcdError> {
+fn parse_quantitative_reference(root: &Node<'_, '_>) -> Result<QuantitativeReference, IlcdError> {
     let pi = first_child(root, &["processInformation"])
         .ok_or(IlcdError::MissingElement("processInformation"))?;
     let qr = first_child(&pi, &["quantitativeReference"])
@@ -148,14 +144,12 @@ fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
         .ok_or(IlcdError::MissingElement("exchangeDirection"))?;
     let direction = parse_direction(text(direction_node))?;
 
-    let mean_amount =
-        first_child(node, &["meanAmount"])
-            .map(|n| parse_finite(n, "meanAmount"))
-            .transpose()?;
-    let resulting_amount =
-        first_child(node, &["resultingAmount"])
-            .map(|n| parse_finite(n, "resultingAmount"))
-            .transpose()?;
+    let mean_amount = first_child(node, &["meanAmount"])
+        .map(|n| parse_finite(n, "meanAmount"))
+        .transpose()?;
+    let resulting_amount = first_child(node, &["resultingAmount"])
+        .map(|n| parse_finite(n, "resultingAmount"))
+        .transpose()?;
 
     let (mean_amount, resulting_amount) = match (mean_amount, resulting_amount) {
         (Some(m), Some(r)) => (m, r),
@@ -218,10 +212,7 @@ fn parse_finite(node: Node<'_, '_>, elem: &'static str) -> Result<f64, IlcdError
 
 // ---- helpers ----------------------------------------------------------
 
-fn first_child<'a, 'input>(
-    node: &Node<'a, 'input>,
-    names: &[&str],
-) -> Option<Node<'a, 'input>> {
+fn first_child<'a, 'input>(node: &Node<'a, 'input>, names: &[&str]) -> Option<Node<'a, 'input>> {
     node.children()
         .find(|n| n.is_element() && names.iter().any(|name| n.has_tag_name(*name)))
 }

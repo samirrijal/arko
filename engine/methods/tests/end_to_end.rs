@@ -60,9 +60,19 @@ fn build_c_matrix_against_ipcc_flows() {
     // CO2 is origin-agnostic, CH4 is tagged fossil so the AR6
     // CasOrigin{fossil} matcher fires. H2O has no factor at all.
     let flows = vec![
-        flow("f_co2", "Carbon dioxide", Some("124-38-9"), FlowOrigin::Unspecified),
+        flow(
+            "f_co2",
+            "Carbon dioxide",
+            Some("124-38-9"),
+            FlowOrigin::Unspecified,
+        ),
         flow("f_ch4", "Methane", Some("74-82-8"), FlowOrigin::Fossil),
-        flow("f_h2o", "Water vapour", Some("7732-18-5"), FlowOrigin::Unspecified),
+        flow(
+            "f_h2o",
+            "Water vapour",
+            Some("7732-18-5"),
+            FlowOrigin::Unspecified,
+        ),
     ];
 
     let b = build_c_matrix(method, &flows).unwrap();
@@ -89,8 +99,18 @@ fn ar6_rejects_unspecified_origin_ch4_as_unmatched() {
         .unwrap();
 
     let flows = vec![
-        flow("f_co2", "Carbon dioxide", Some("124-38-9"), FlowOrigin::Unspecified),
-        flow("f_ch4_unknown", "Methane", Some("74-82-8"), FlowOrigin::Unspecified),
+        flow(
+            "f_co2",
+            "Carbon dioxide",
+            Some("124-38-9"),
+            FlowOrigin::Unspecified,
+        ),
+        flow(
+            "f_ch4_unknown",
+            "Methane",
+            Some("74-82-8"),
+            FlowOrigin::Unspecified,
+        ),
     ];
 
     let b = build_c_matrix(method, &flows).unwrap();
@@ -259,7 +279,9 @@ fn ar5_and_ar6_agree_where_they_should_and_disagree_where_they_should() {
 
     let reg = MethodRegistry::standard();
 
-    let base_study = |c_matrix: SparseMatrix, impacts: Vec<arko_core::meta::ImpactMeta>, method: MethodRef| Study {
+    let base_study = |c_matrix: SparseMatrix,
+                      impacts: Vec<arko_core::meta::ImpactMeta>,
+                      method: MethodRef| Study {
         technosphere: technosphere.clone(),
         biosphere: biosphere.clone(),
         characterization: c_matrix,

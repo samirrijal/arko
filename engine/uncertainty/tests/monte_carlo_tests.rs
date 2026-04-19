@@ -1,6 +1,5 @@
 //! Integration tests for the Monte Carlo runner.
 
-use approx::assert_relative_eq;
 use arko_uncertainty::{run_monte_carlo, Distribution, MonteCarloConfig, UncertaintyError};
 
 #[test]
@@ -30,7 +29,10 @@ fn normal_has_expected_mean_and_sd() {
         seed: 42,
         ..MonteCarloConfig::default()
     };
-    let d = Distribution::Normal { mean: 100.0, sd: 5.0 };
+    let d = Distribution::Normal {
+        mean: 100.0,
+        sd: 5.0,
+    };
     let r = run_monte_carlo(&cfg, |rng| Ok(vec![d.sample(rng)?])).unwrap();
 
     let s = &r.per_dimension[0];
@@ -137,7 +139,11 @@ fn convergence_flag_reflects_threshold() {
         max: 1_000.0,
     };
     let r = run_monte_carlo(&cfg, |rng| Ok(vec![d.sample(rng)?])).unwrap();
-    assert!(!r.converged, "standard_error was {}", r.per_dimension[0].standard_error);
+    assert!(
+        !r.converged,
+        "standard_error was {}",
+        r.per_dimension[0].standard_error
+    );
 
     // And the opposite direction: point value always converges at any threshold.
     let cfg2 = MonteCarloConfig {

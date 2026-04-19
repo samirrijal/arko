@@ -12,9 +12,7 @@
 //! onto their `Study::license_tiers` vector and point
 //! `ProcessMeta::license_tier` at its index.
 
-use arko_core::license::{
-    DerivativeAction, DerivativeRule, DerivativeTrigger, LicenseTier,
-};
+use arko_core::license::{DerivativeAction, DerivativeRule, DerivativeTrigger, LicenseTier};
 
 /// Ecoinvent v3.x family — conservative default.
 ///

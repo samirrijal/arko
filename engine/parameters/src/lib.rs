@@ -48,7 +48,10 @@ pub fn evaluate(params: &[Parameter]) -> Result<HashMap<ParameterId, f64>, Engin
             *in_degree
                 .get_mut(&p.id)
                 .expect("in_degree seeded for all ids") += 1;
-            adjacency.entry(dep_id.clone()).or_default().push(p.id.clone());
+            adjacency
+                .entry(dep_id.clone())
+                .or_default()
+                .push(p.id.clone());
         }
     }
 
@@ -112,9 +115,9 @@ pub fn eval_expr(
 ) -> Result<f64, EngineError> {
     let v = match expr {
         Expression::Const(c) => *c,
-        Expression::Var(id) => *env.get(id).ok_or_else(|| {
-            EngineError::ParamUnresolved(owner_hint.0.clone(), id.0.clone())
-        })?,
+        Expression::Var(id) => *env
+            .get(id)
+            .ok_or_else(|| EngineError::ParamUnresolved(owner_hint.0.clone(), id.0.clone()))?,
         Expression::Add(l, r) => eval_expr(l, env, owner_hint)? + eval_expr(r, env, owner_hint)?,
         Expression::Sub(l, r) => eval_expr(l, env, owner_hint)? - eval_expr(r, env, owner_hint)?,
         Expression::Mul(l, r) => eval_expr(l, env, owner_hint)? * eval_expr(r, env, owner_hint)?,
@@ -162,10 +165,9 @@ pub fn walk_deps(expr: &Expression, out: &mut Vec<ParameterId>) {
             walk_deps(r, out);
         }
         Expression::Pow(b, _) => walk_deps(b, out),
-        Expression::Abs(e)
-        | Expression::Sqrt(e)
-        | Expression::Log(e)
-        | Expression::Exp(e) => walk_deps(e, out),
+        Expression::Abs(e) | Expression::Sqrt(e) | Expression::Log(e) | Expression::Exp(e) => {
+            walk_deps(e, out)
+        }
         Expression::IfPos {
             cond,
             then_branch,
@@ -244,10 +246,7 @@ mod tests {
     #[test]
     fn sqrt_of_negative_is_nonfinite() {
         // a = sqrt(-1) → NaN → rejected
-        let params = vec![pe(
-            "a",
-            Expression::Sqrt(Box::new(Expression::Const(-1.0))),
-        )];
+        let params = vec![pe("a", Expression::Sqrt(Box::new(Expression::Const(-1.0))))];
         let err = evaluate(&params).unwrap_err();
         assert_eq!(err.code(), "E_PARAM_NONFINITE");
     }

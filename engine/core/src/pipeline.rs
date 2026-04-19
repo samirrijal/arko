@@ -97,7 +97,8 @@ pub fn compute<S: Solver>(study: &Study, solver: &S) -> Result<Computed, EngineE
     for (j, &s_j) in scaling.iter().enumerate() {
         if s_j.abs() > EPS_PRESENCE {
             contributing.push(
-                u32::try_from(j).map_err(|_| EngineError::Internal("process index > u32::MAX".into()))?,
+                u32::try_from(j)
+                    .map_err(|_| EngineError::Internal("process index > u32::MAX".into()))?,
             );
             let tier_idx = study.processes[j].license_tier.0 as usize;
             if let Some(tier) = study.license_tiers.get(tier_idx) {

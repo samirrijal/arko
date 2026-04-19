@@ -147,10 +147,7 @@ impl std::fmt::Display for Dimension {
             return f.write_str("1");
         }
         let mut first = true;
-        let mut write = |f: &mut std::fmt::Formatter<'_>,
-                         sym: &str,
-                         exp: i8|
-         -> std::fmt::Result {
+        let mut write = |f: &mut std::fmt::Formatter<'_>, sym: &str, exp: i8| -> std::fmt::Result {
             if exp == 0 {
                 return Ok(());
             }

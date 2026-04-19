@@ -37,7 +37,6 @@ pub mod reader;
 
 pub use error::Ecospold2Error;
 pub use model::{
-    Activity, ActivityDataset, Direction, ElementaryExchange, Geography,
-    IntermediateExchange,
+    Activity, ActivityDataset, Direction, ElementaryExchange, Geography, IntermediateExchange,
 };
 pub use reader::parse_dataset;

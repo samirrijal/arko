@@ -51,7 +51,10 @@ pub enum UnitParseError {
 #[derive(Debug, Clone)]
 enum Token {
     /// An atomic term with its exponent already folded in.
-    Term { ident: String, exp: i32 },
+    Term {
+        ident: String,
+        exp: i32,
+    },
     Op(char),
 }
 

@@ -14,7 +14,10 @@ pub enum IlcdError {
     MissingElement(&'static str),
 
     #[error("missing required attribute `{attr}` on `<{elem}>`")]
-    MissingAttribute { elem: &'static str, attr: &'static str },
+    MissingAttribute {
+        elem: &'static str,
+        attr: &'static str,
+    },
 
     #[error("attribute `{attr}` on `<{elem}>` has invalid value `{value}`: {reason}")]
     InvalidAttribute {

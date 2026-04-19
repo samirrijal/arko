@@ -45,29 +45,95 @@ pub const PREFIXES: &[Prefix] = &[
     // Two-character prefixes MUST appear before their one-character
     // prefixes of the same leading letter so a greedy longest-match
     // parser picks them up first. We list them in descending length.
-    Prefix { symbol: "da", scale: 1e1 },
+    Prefix {
+        symbol: "da",
+        scale: 1e1,
+    },
     // One-character prefixes.
-    Prefix { symbol: "Y", scale: 1e24 },
-    Prefix { symbol: "Z", scale: 1e21 },
-    Prefix { symbol: "E", scale: 1e18 },
-    Prefix { symbol: "P", scale: 1e15 },
-    Prefix { symbol: "T", scale: 1e12 },
-    Prefix { symbol: "G", scale: 1e9 },
-    Prefix { symbol: "M", scale: 1e6 },
-    Prefix { symbol: "k", scale: 1e3 },
-    Prefix { symbol: "h", scale: 1e2 },
-    Prefix { symbol: "d", scale: 1e-1 },
-    Prefix { symbol: "c", scale: 1e-2 },
-    Prefix { symbol: "m", scale: 1e-3 },
-    Prefix { symbol: "μ", scale: 1e-6 },
-    Prefix { symbol: "µ", scale: 1e-6 }, // U+00B5 "micro sign" alias.
-    Prefix { symbol: "u", scale: 1e-6 }, // ASCII micro, widely used.
-    Prefix { symbol: "n", scale: 1e-9 },
-    Prefix { symbol: "p", scale: 1e-12 },
-    Prefix { symbol: "f", scale: 1e-15 },
-    Prefix { symbol: "a", scale: 1e-18 },
-    Prefix { symbol: "z", scale: 1e-21 },
-    Prefix { symbol: "y", scale: 1e-24 },
+    Prefix {
+        symbol: "Y",
+        scale: 1e24,
+    },
+    Prefix {
+        symbol: "Z",
+        scale: 1e21,
+    },
+    Prefix {
+        symbol: "E",
+        scale: 1e18,
+    },
+    Prefix {
+        symbol: "P",
+        scale: 1e15,
+    },
+    Prefix {
+        symbol: "T",
+        scale: 1e12,
+    },
+    Prefix {
+        symbol: "G",
+        scale: 1e9,
+    },
+    Prefix {
+        symbol: "M",
+        scale: 1e6,
+    },
+    Prefix {
+        symbol: "k",
+        scale: 1e3,
+    },
+    Prefix {
+        symbol: "h",
+        scale: 1e2,
+    },
+    Prefix {
+        symbol: "d",
+        scale: 1e-1,
+    },
+    Prefix {
+        symbol: "c",
+        scale: 1e-2,
+    },
+    Prefix {
+        symbol: "m",
+        scale: 1e-3,
+    },
+    Prefix {
+        symbol: "μ",
+        scale: 1e-6,
+    },
+    Prefix {
+        symbol: "µ",
+        scale: 1e-6,
+    }, // U+00B5 "micro sign" alias.
+    Prefix {
+        symbol: "u",
+        scale: 1e-6,
+    }, // ASCII micro, widely used.
+    Prefix {
+        symbol: "n",
+        scale: 1e-9,
+    },
+    Prefix {
+        symbol: "p",
+        scale: 1e-12,
+    },
+    Prefix {
+        symbol: "f",
+        scale: 1e-15,
+    },
+    Prefix {
+        symbol: "a",
+        scale: 1e-18,
+    },
+    Prefix {
+        symbol: "z",
+        scale: 1e-21,
+    },
+    Prefix {
+        symbol: "y",
+        scale: 1e-24,
+    },
 ];
 
 /// The atom table. Listed longest-symbol first where a short symbol

@@ -80,10 +80,7 @@ fn tol_for(want: f64) -> f64 {
 /// reference-parity tolerance.
 ///
 /// This is the correctness of the solve itself, independent of B or C.
-pub fn check_scaling_identity<S: Solver>(
-    study: &Study,
-    solver: &S,
-) -> Result<(), PropertyFailure> {
+pub fn check_scaling_identity<S: Solver>(study: &Study, solver: &S) -> Result<(), PropertyFailure> {
     let computed = compute(study, solver).map_err(PropertyFailure::Engine)?;
 
     // Dense f from the sparse functional unit.

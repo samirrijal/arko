@@ -159,7 +159,10 @@ fn rule_above_threshold_warns_and_returns_messages() {
     let auth = authorize(Intent::Publish, &study, &computed, Utc::now());
     assert_eq!(auth.outcome, Outcome::Warn);
     assert_eq!(auth.fired.len(), 2, "both processes fire the same rule");
-    assert!(auth.fired.iter().all(|r| r.message == "attribution required"));
+    assert!(auth
+        .fired
+        .iter()
+        .all(|r| r.message == "attribution required"));
     assert_eq!(auth.fired[0].process_index, 0);
     assert_eq!(auth.fired[1].process_index, 1);
     assert!(auth.blocking_sources.is_empty());
@@ -179,12 +182,7 @@ fn block_action_trumps_warn_action() {
         action: DerivativeAction::Block,
         message: "b".into(),
     });
-    let study = identity_study(
-        vec![warn_tier, block_tier],
-        0,
-        1,
-        vec![(0, 1.0), (1, 0.5)],
-    );
+    let study = identity_study(vec![warn_tier, block_tier], 0, 1, vec![(0, 1.0), (1, 0.5)]);
     let computed = compute(&study, &DenseLuSolver).unwrap();
     let auth = authorize(Intent::Publish, &study, &computed, Utc::now());
     assert_eq!(auth.outcome, Outcome::Blocked);
@@ -229,10 +227,7 @@ fn expired_tier_blocks_even_when_all_flags_permissive() {
     let auth = authorize(Intent::Publish, &study, &computed, now);
     assert_eq!(auth.outcome, Outcome::Blocked);
     assert_eq!(auth.expired_sources, vec!["ecoinvent-3.11".to_string()]);
-    assert!(auth
-        .blocking_sources
-        .iter()
-        .any(|s| s == "ecoinvent-3.11"));
+    assert!(auth.blocking_sources.iter().any(|s| s == "ecoinvent-3.11"));
 }
 
 #[test]

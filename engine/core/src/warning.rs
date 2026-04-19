@@ -55,7 +55,11 @@ pub struct Warning {
 
 impl Warning {
     pub fn new(code: WarningCode, message: impl Into<String>) -> Self {
-        Self { code, message: message.into(), value: None }
+        Self {
+            code,
+            message: message.into(),
+            value: None,
+        }
     }
 
     pub fn with_value(mut self, value: f64) -> Self {

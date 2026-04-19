@@ -137,10 +137,7 @@ pub fn convert_str(value: f64, from: &str, to: &str) -> Result<f64, UnitError> {
 /// Core-facing helper: validate that two `arko_core::Unit` strings
 /// are commensurable, returning `Ok(())` on success. This is the
 /// hook `arko-validation` uses for the §6.1 step-3 consistency check.
-pub fn check_compatibility(
-    a: &arko_core::Unit,
-    b: &arko_core::Unit,
-) -> Result<(), UnitError> {
+pub fn check_compatibility(a: &arko_core::Unit, b: &arko_core::Unit) -> Result<(), UnitError> {
     let pa = ParsedUnit::parse(a.as_str())?;
     let pb = ParsedUnit::parse(b.as_str())?;
     if commensurable(&pa, &pb) {

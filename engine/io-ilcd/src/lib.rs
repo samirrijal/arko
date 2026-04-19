@@ -51,7 +51,5 @@ pub mod model;
 pub mod reader;
 
 pub use error::IlcdError;
-pub use model::{
-    Direction, Exchange, ProcessDataset, ProcessInformation, QuantitativeReference,
-};
+pub use model::{Direction, Exchange, ProcessDataset, ProcessInformation, QuantitativeReference};
 pub use reader::parse_process;

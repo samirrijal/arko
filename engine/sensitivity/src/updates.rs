@@ -214,7 +214,11 @@ impl FactoredSystem {
             .into());
         }
         let current = extract_column(&self.a, j);
-        let u: Vec<f64> = new_col.iter().zip(current.iter()).map(|(n, c)| n - c).collect();
+        let u: Vec<f64> = new_col
+            .iter()
+            .zip(current.iter())
+            .map(|(n, c)| n - c)
+            .collect();
         if u.iter().all(|&x| x == 0.0) {
             return Ok(()); // Nothing changed.
         }

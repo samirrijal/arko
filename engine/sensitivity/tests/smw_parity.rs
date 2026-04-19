@@ -39,7 +39,16 @@ fn assert_vectors_parity(got: &[f64], want: &[f64]) {
 
 #[test]
 fn from_solve_matches_direct_solve() {
-    let a = build_a(3, &[(0, 0, 2.0), (0, 1, 1.0), (1, 1, 3.0), (2, 2, 4.0), (1, 2, -1.0)]);
+    let a = build_a(
+        3,
+        &[
+            (0, 0, 2.0),
+            (0, 1, 1.0),
+            (1, 1, 3.0),
+            (2, 2, 4.0),
+            (1, 2, -1.0),
+        ],
+    );
     let f = SparseVector::new(3, vec![0, 1, 2], vec![1.0, 2.0, 3.0]);
     let sys = FactoredSystem::from_solve(a.clone(), &f, &DenseLuSolver).unwrap();
     let truth = ground_truth_solve(&a, &f);
@@ -50,7 +59,16 @@ fn from_solve_matches_direct_solve() {
 #[test]
 fn edit_entry_matches_full_refactor() {
     // Starting A.
-    let a0 = build_a(3, &[(0, 0, 2.0), (0, 1, 1.0), (1, 1, 3.0), (2, 2, 4.0), (1, 2, -1.0)]);
+    let a0 = build_a(
+        3,
+        &[
+            (0, 0, 2.0),
+            (0, 1, 1.0),
+            (1, 1, 3.0),
+            (2, 2, 4.0),
+            (1, 2, -1.0),
+        ],
+    );
     let f = SparseVector::new(3, vec![0, 1, 2], vec![1.0, 2.0, 3.0]);
     let mut sys = FactoredSystem::from_solve(a0.clone(), &f, &DenseLuSolver).unwrap();
 
@@ -61,7 +79,13 @@ fn edit_entry_matches_full_refactor() {
     // Ground truth: build the modified A from scratch.
     let a1 = build_a(
         3,
-        &[(0, 0, 2.0), (0, 1, 1.5), (1, 1, 3.0), (2, 2, 4.0), (1, 2, -1.0)],
+        &[
+            (0, 0, 2.0),
+            (0, 1, 1.5),
+            (1, 1, 3.0),
+            (2, 2, 4.0),
+            (1, 2, -1.0),
+        ],
     );
     let truth = ground_truth_solve(&a1, &f);
     assert_vectors_parity(&sys.scaling, &truth);
@@ -79,7 +103,13 @@ fn two_sequential_edits_match_full_refactor() {
 
     let a_final = build_a(
         3,
-        &[(0, 0, 2.0), (0, 1, 0.5), (1, 1, 3.0), (1, 2, -0.25), (2, 2, 4.0)],
+        &[
+            (0, 0, 2.0),
+            (0, 1, 0.5),
+            (1, 1, 3.0),
+            (1, 2, -0.25),
+            (2, 2, 4.0),
+        ],
     );
     let truth = ground_truth_solve(&a_final, &f);
     assert_vectors_parity(&sys.scaling, &truth);
@@ -104,10 +134,7 @@ fn replace_column_matches_full_refactor() {
 #[test]
 fn modify_edge_is_rank_2_and_matches_full_refactor() {
     // Start: A[1, 0] = 2 (electricity used by steel).
-    let a0 = build_a(
-        3,
-        &[(0, 0, 1.0), (1, 0, 2.0), (1, 1, 1.0), (2, 2, 1.0)],
-    );
+    let a0 = build_a(3, &[(0, 0, 1.0), (1, 0, 2.0), (1, 1, 1.0), (2, 2, 1.0)]);
     let f = SparseVector::new(3, vec![0, 1, 2], vec![1.0, 0.0, 1.0]);
     let mut sys = FactoredSystem::from_solve(a0, &f, &DenseLuSolver).unwrap();
 
@@ -116,10 +143,7 @@ fn modify_edge_is_rank_2_and_matches_full_refactor() {
     sys.modify_edge(1, 0, 2, 1.5, &DenseLuSolver).unwrap();
     assert_eq!(sys.generation, 1);
 
-    let a_final = build_a(
-        3,
-        &[(0, 0, 1.0), (1, 1, 1.0), (1, 2, 1.5), (2, 2, 1.0)],
-    );
+    let a_final = build_a(3, &[(0, 0, 1.0), (1, 1, 1.0), (1, 2, 1.5), (2, 2, 1.0)]);
     let truth = ground_truth_solve(&a_final, &f);
     assert_vectors_parity(&sys.scaling, &truth);
 }
@@ -130,8 +154,12 @@ fn update_rank_r_matches_full_refactor() {
     let a0 = build_a(
         4,
         &[
-            (0, 0, 5.0), (1, 1, 5.0), (2, 2, 5.0), (3, 3, 5.0),
-            (0, 1, 1.0), (2, 3, 1.0),
+            (0, 0, 5.0),
+            (1, 1, 5.0),
+            (2, 2, 5.0),
+            (3, 3, 5.0),
+            (0, 1, 1.0),
+            (2, 3, 1.0),
         ],
     );
     let f = SparseVector::new(4, vec![0, 1, 2, 3], vec![1.0, 1.0, 1.0, 1.0]);
@@ -148,9 +176,14 @@ fn update_rank_r_matches_full_refactor() {
     let a_final = build_a(
         4,
         &[
-            (0, 0, 5.0), (1, 1, 5.0), (2, 2, 5.0), (3, 3, 5.0),
-            (0, 1, 1.0), (0, 2, 1.0),       // added from u_0·v_0^T
-            (2, 3, 1.0), (3, 1, 1.0),       // added from u_1·v_1^T
+            (0, 0, 5.0),
+            (1, 1, 5.0),
+            (2, 2, 5.0),
+            (3, 3, 5.0),
+            (0, 1, 1.0),
+            (0, 2, 1.0), // added from u_0·v_0^T
+            (2, 3, 1.0),
+            (3, 1, 1.0), // added from u_1·v_1^T
         ],
     );
     let truth = ground_truth_solve(&a_final, &f);

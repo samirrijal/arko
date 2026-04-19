@@ -40,8 +40,7 @@ impl DimensionStats {
         let sum: f64 = samples.iter().sum();
         let mean = sum / (n as f64);
         let variance_denom = if n > 1 { (n - 1) as f64 } else { 1.0 };
-        let variance =
-            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / variance_denom;
+        let variance = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / variance_denom;
         let sd = variance.sqrt();
         let standard_error = sd / (n as f64).sqrt();
 

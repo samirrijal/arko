@@ -140,8 +140,8 @@ fn check_allocations(study: &Study) -> Result<(), EngineError> {
 mod tests {
     use super::*;
     use arko_core::{
-        Allocation, AllocationMode, FlowMeta, ImpactMeta, LicenseTier, LicenseTierRef,
-        MethodRef, ProcessMeta, SignConvention, SparseMatrix, SparseVector, Unit,
+        Allocation, AllocationMode, FlowMeta, ImpactMeta, LicenseTier, LicenseTierRef, MethodRef,
+        ProcessMeta, SignConvention, SparseMatrix, SparseVector, Unit,
     };
     use sprs::TriMat;
 

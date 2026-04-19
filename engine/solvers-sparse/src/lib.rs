@@ -45,11 +45,7 @@ impl Solver for SparseLuSolver {
         })
     }
 
-    fn solve(
-        &self,
-        a: &SparseMatrix,
-        f: &SparseVector,
-    ) -> Result<DenseVector, EngineError> {
+    fn solve(&self, a: &SparseMatrix, f: &SparseVector) -> Result<DenseVector, EngineError> {
         let (rows, cols) = a.shape();
         if rows != cols {
             return Err(EngineError::ShapeMismatch(format!(

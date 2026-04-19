@@ -34,9 +34,5 @@ pub trait Solver {
     /// Implementations **MUST** return `EngineError::ShapeMismatch` if
     /// `A` is not square or `f.dim() != A.rows()`, and
     /// `EngineError::Singular` if a singular factor is encountered.
-    fn solve(
-        &self,
-        a: &SparseMatrix,
-        f: &SparseVector,
-    ) -> Result<DenseVector, EngineError>;
+    fn solve(&self, a: &SparseMatrix, f: &SparseVector) -> Result<DenseVector, EngineError>;
 }

@@ -7,9 +7,8 @@
 //! spec §13.2 for the `W_MC_NONCONVERGENT` warning).
 
 use crate::{
-    distribution::UncertaintyError,
-    stats::DimensionStats,
-    DEFAULT_CONVERGENCE_THRESHOLD, DEFAULT_ITERATIONS,
+    distribution::UncertaintyError, stats::DimensionStats, DEFAULT_CONVERGENCE_THRESHOLD,
+    DEFAULT_ITERATIONS,
 };
 use rand_mt::Mt64;
 use serde::{Deserialize, Serialize};
@@ -91,8 +90,10 @@ where
         }
     }
 
-    let per_dimension: Vec<DimensionStats> =
-        per_dim.into_iter().map(DimensionStats::from_samples).collect();
+    let per_dimension: Vec<DimensionStats> = per_dim
+        .into_iter()
+        .map(DimensionStats::from_samples)
+        .collect();
 
     let converged = per_dimension
         .iter()

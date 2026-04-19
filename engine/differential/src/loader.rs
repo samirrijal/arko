@@ -11,8 +11,7 @@
 
 use crate::vector::TestVector;
 use std::{
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -50,9 +49,7 @@ pub enum VectorLoadError {
 /// its output unchanged, which is useful when a corpus is deliberately
 /// parameterized by the same logical test run under different
 /// tolerance classes).
-pub fn load_vector_directory<P: AsRef<Path>>(
-    dir: P,
-) -> Result<Vec<TestVector>, VectorLoadError> {
+pub fn load_vector_directory<P: AsRef<Path>>(dir: P) -> Result<Vec<TestVector>, VectorLoadError> {
     let dir = dir.as_ref();
     let entries = fs::read_dir(dir).map_err(|e| VectorLoadError::ReadDir {
         path: dir.to_path_buf(),
@@ -78,11 +75,10 @@ pub fn load_vector_directory<P: AsRef<Path>>(
             path: path.clone(),
             source: e,
         })?;
-        let v: TestVector =
-            serde_json::from_slice(&bytes).map_err(|e| VectorLoadError::Parse {
-                path: path.clone(),
-                source: e,
-            })?;
+        let v: TestVector = serde_json::from_slice(&bytes).map_err(|e| VectorLoadError::Parse {
+            path: path.clone(),
+            source: e,
+        })?;
         out.push(v);
     }
     Ok(out)

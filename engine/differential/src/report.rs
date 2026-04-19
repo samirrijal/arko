@@ -87,10 +87,7 @@ pub enum VectorVerdict {
     },
 
     /// The engine returned an `EngineError` (e.g., E_SINGULAR).
-    EngineError {
-        code: String,
-        message: String,
-    },
+    EngineError { code: String, message: String },
 }
 
 impl VectorVerdict {

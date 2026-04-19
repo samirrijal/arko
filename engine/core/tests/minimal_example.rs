@@ -127,7 +127,11 @@ fn canonical_hash_is_deterministic() {
         s2.canonical_hash(),
         "canonical_hash MUST be deterministic — spec §7.1 determinism contract",
     );
-    assert_eq!(s1.canonical_hash().len(), 64, "BLAKE3 hex output is 64 chars");
+    assert_eq!(
+        s1.canonical_hash().len(),
+        64,
+        "BLAKE3 hex output is 64 chars"
+    );
 }
 
 #[test]
