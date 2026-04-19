@@ -9,6 +9,105 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-19 · `D-0012` — EF "reference package" vs EF "LCI datasets": license bifurcation
+
+**Context:** `D-0010` listed "the JRC EF reference package" as one of
+three V1 *foreground-free* databases under a single permissive
+license. A primary-source license deep-read on 2026-04-19
+([docs/licenses/jrc-ef.md](docs/licenses/jrc-ef.md)) revealed that
+"EF data" is two structurally different artefacts under two different
+licenses, wearing the same name:
+
+1. **EF reference package (infrastructure):** flows, flow properties,
+   unit groups, LCIA methods, characterisation factors for the 16 EF
+   impact categories. Published by JRC. Reusable under EC Decision
+   2011/833/EU with attribution — effectively CC-BY 4.0. This is the
+   bundle `ef_reference_package_resolver_smoke.rs` resolved 94,062
+   flows against (CHANGELOG 2026-04-19).
+2. **EF 3.1 LCI datasets (background processes):** the ~20 000-process
+   inventory bundle hosted at the Sphera EF node
+   (`lcdn.thinkstep.com`) and the ecoinvent-hosted Chemicals Part 1
+   lot. Published by Sphera, ecoinvent, CEPE, FEFAC — not JRC — under
+   restrictive per-licensor EULAs (Sphera §6: *"You are not allowed
+   to use the DATASET for any other purpose than the PERMITTED USE
+   […] including for commercial, non-commercial or educational
+   purposes."*). Permitted uses limited to PEFCR/OEFSR compliance or
+   narrow EU-policy implementation (batteries, PV, ESPR, etc.).
+   General PEF/OEF study user term **expired 2025-12-31**. This is
+   the bundle `ef_carpet_calc_smoke.rs` pulled the carpet process
+   from.
+
+The two artefacts have always been distinct; `D-0010` conflated them
+because the Week 5 test plan treated "EF" as a single target. The
+infrastructure bundle is genuinely permissive; the LCI bundle is
+not.
+
+**Decision:** Refine `D-0010`.
+
+1. **EF reference package (infrastructure) stays on the V1
+   foreground-free list.** Reader validation against it is the 2026-
+   04-19 94k-flow resolver smoke; that evidence is unchanged.
+2. **EF 3.1 LCI datasets are explicitly excluded from V1.** Same
+   posture as ecoinvent under `D-0005`: not shipped, not bundled,
+   not hosted. Reconsideration deferred to V2+ via an appropriate
+   licensing relationship, if that ever makes sense for Arko's
+   shape.
+3. **Phase 1 exit criterion "three free databases importable"
+   tightens.** The two confirmed V1 foreground-free databases are
+   ÖKOBAUDAT 2024-I and the EF reference package infrastructure.
+   The third slot reopens; `D-0010`'s ProBas candidate stands pending
+   a primary-source license check (same discipline as this entry).
+   USDA LCA Commons is an equally defensible alternative also
+   pending a license check before reader work begins on it.
+4. **Internal engineering smoke tests against the EF LCI bundle**
+   (maintainer-downloaded, no redistribution, no commercial path,
+   results recorded only in internal CHANGELOG) remain defensible
+   under Sphera's "dataset/software developer" category — but that
+   posture has weakened since 2025-12-31 term expiry for general
+   PEF/OEF users. Future smoke entries should note the license
+   posture explicitly.
+
+**Reasoning:** Leaving `D-0010` uncorrected would ship a Phase 1
+exit claim that silently depends on a restricted data bundle for
+one-third of its evidentiary weight. A future auditor, contributor,
+or future-maintainer reading the decision log would come away with
+the wrong mental model of what's safe to ship. Naming the
+bifurcation now — before the claim enters marketing copy, blog
+posts, or docs-site content — is much cheaper than retroactively
+unwinding it.
+
+The general pattern worth remembering: when a licensing claim feels
+loosely sourced, ask whether the thing being claimed about is one
+artefact or several artefacts masquerading under a shared name.
+
+**Alternatives rejected:**
+
+- *Amend `D-0010` in place:* the decision log is append-only for
+  provenance reasons. A new entry that back-references is the
+  correct shape.
+- *Frame this as a `D-0010` "reversal condition" trigger:*
+  `D-0010`'s reversal condition is specifically about Agribalyse
+  republishing without ecoinvent dependency. This bifurcation isn't
+  that; it's a refinement of the conceptual model, not a reversal.
+- *Keep both EF artefacts as a single V1 slot with a footnote:*
+  the footnote approach depends on readers always reading it. Split
+  naming is harder to misread.
+
+**Impact on public-facing copy:** safe to say *"Arko parses the
+ILCD format used by the EF reference package"* and *"Arko ships the
+16 EF 3.1 impact-category characterisation factors as a method
+preset, reused under EC Decision 2011/833/EU."* Not safe to say
+*"Arko ships EF 3.1 LCI datasets"*, *"Arko supports EF 3.1 out of
+the box"* (ambiguous, reads as LCI support), or *"Arko is an open
+EF 3.1 platform."* Full do/don't list and attribution templates in
+`docs/licenses/jrc-ef.md`.
+
+**Cross-references:** `D-0005` (no ecoinvent in V1), `D-0010`
+(foreground-free vs background-ecoinvent-dependent), CHANGELOG
+entries 2026-04-19 for the two EF smokes.
+
+---
+
 ## 2026-04-19 · `D-0011` — KarbonGarbi paused; Arko is the primary Goibix product; pause trigger retired
 
 **Context:** `D-0006` framed Arko as a first-class product but preserved a
