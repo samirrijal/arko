@@ -9,6 +9,117 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-19 · `D-0009` — ILCD+EPD v1.2 support: stage-stratified, inline-unit-priority, warn-don't-silently-default
+
+**Context:** Phase 1 Week 4's first real-data checkpoint fed a full
+ÖKOBAUDAT 2024-I bundle (3,075 processes) through the `arko-io-ilcd` →
+`arko-io-ilcd-linker` pipeline. Initial pass rate: 0/3,075. Every
+dataset hit the same `<exchangeDirection>` requirement on the reference
+flow — routine in the ILCD+EPD v1.2 DIN EN 15804 superset used by
+ÖKOBAUDAT, EPD Norge, and Environdec construction-industry EPDs.
+Extending support was unavoidable: those publishers are the primary
+data source for KarbonGarbi's first market (Basque industry) and the
+engine's credibility depends on parsing their feeds honestly.
+
+**Decision:** Support ILCD+EPD v1.2 in the same `ProcessDataset` type
+used for vanilla ILCD, with four invariants holding:
+
+1. **Preserve stage stratification.** Exchange-level EPD amounts flow
+   through as `Vec<EpdModuleAmount { module, scenario, amount }>` on
+   the `Exchange` type — not flattened, not summed. The A1-A3 / A4 /
+   A5 / B1-B7 / C1-C4 / D topology survives down to the downstream
+   calc layer unchanged. Module D negatives pass through verbatim per
+   EN 15804+A2 sign convention.
+2. **Inline `<epd:referenceToUnitGroupDataSet>` takes priority** over
+   the flow → flow-property → unit-group chain. Recorded on
+   `TypedExchange.unit_source` as `UnitResolutionSource::EpdInline` vs
+   `FlowChain` so auditors can tell the two apart. When both paths
+   resolve and disagree on UUID, a
+   `BridgeWarning::UnitGroupDisagreement` is emitted — preference is
+   fixed (inline wins), but practitioners must see the disagreement.
+   When the inline UUID references a JRC core-reference-data file not
+   shipped locally (routine for ÖKOBAUDAT), we fall back to the inline
+   `<common:shortDescription>` as the unit label and emit a
+   `BridgeWarning::InlineUnitGroupUnresolved`.
+3. **Missing `<exchangeDirection>` warns, does not silently default.**
+   When absent (routine on ILCD+EPD reference-flow exchanges), the
+   parser fills in `Output` by EN 15804 convention AND emits a typed
+   `ParseWarning::InferredDirection { is_reference_flow }`. Silent
+   defaulting would mask genuinely malformed waste-treatment datasets
+   whose reference flow was intended as Input. Warning on the
+   reference flow is the conventional case; warning on a non-reference
+   flow is a strong signal of a bug.
+4. **Empty `<epd:amount>` text = INA** (indicator not assessed, per
+   EN 15804+A2) — dropped from `epd_modules` rather than fabricated as
+   zero. Distinct from a published `0` value. If every module on an
+   exchange is INA, the exchange still parses (scalar amount defaults
+   to 0.0) because the publisher's *intent* to declare it as an EPD-
+   indicator row is recorded via the `<c:other>` block presence.
+
+Module-attribute namespace tolerance: parsers match `module` /
+`scenario` by local name, so `<epd:amount epd:module="A1-A3">` and
+`<epd:amount module="A1-A3">` both parse (ÖKOBAUDAT vintages disagree;
+the iai.kit.edu/EPD/2013 spec uses unprefixed).
+
+**Rationale:** *Silent wrongness is worse than loud refusal.* The
+temptation at step (3) was to just default missing directions to
+Output and move on — the test would have passed, ÖKOBAUDAT would have
+loaded, and the engine would have been subtly wrong on any dataset
+whose reference flow is an Input (waste-treatment processes, recycling
+credits). The structured `ParseWarning` / `BridgeWarning` enums let
+callers route anomalies to logs, telemetry, CI gates, or UI pills —
+whatever fits their audit posture — without the engine picking a
+routing policy for them. The inline-vs-chain preference at step (2)
+likewise mirrors how openLCA, GaBi, and SimaPro treat the EPD
+extension: the publisher's inline authority wins, but the chain walk
+remains available for audit. Stage stratification at step (1) is the
+load-bearing one — flattening A1-A3 + C + D into a single scalar is
+cheap at parse time and catastrophic at interpretation time; downstream
+calc code cannot reconstruct what was collapsed.
+
+**Alternatives rejected:**
+- *Tolerance patch:* make `<exchangeDirection>` optional with a
+  silent default. Gets ÖKOBAUDAT loading without crashing but
+  produces semantically wrong columns on waste-treatment datasets.
+  Violates the engine's core credibility claim.
+- *Separate `EpdProcessDataset` type:* parallel ILCD vs ILCD+EPD
+  hierarchies would double the maintenance surface. The EPD
+  extension is a strict superset of vanilla ILCD; using one type
+  with `#[serde(default, skip_serializing_if)]` fields keeps the API
+  flat and preserves JSON round-trip compatibility for vanilla
+  fixtures (verified: all pre-existing tests pass unchanged).
+- *Default-to-zero on INA empty amounts:* would count "this
+  indicator was not assessed for this EPD" as "this indicator is
+  zero for this EPD". That conflation is precisely the bug EN
+  15804+A2's INA convention exists to prevent.
+
+**Scope notes:**
+- ÖKOBAUDAT 2024-I pipeline smoke: 2,970 / 3,075 (96.6%) processes
+  resolve cleanly end-to-end; 56,430 exchanges typed; 7 distinct
+  reference units (MJ, kg, m³, qm, pcs., m, a). The remaining 105
+  failures are bundle-side data gaps (missing flow XMLs, flows with
+  no quantitative reference and no inline unit ref) — the engine
+  classifies these as `LinkError::Io` / `FlowHasNoUnitDerivation` and
+  the smoke test accepts them as publisher-side issues.
+- Synthetic fixture at
+  [`engine/io-ilcd-linker/tests/fixtures/epd_minimal_bundle/`](engine/io-ilcd-linker/tests/fixtures/epd_minimal_bundle/)
+  is hand-crafted (not an ÖKOBAUDAT slice — CC-BY-ND-3.0-DE). It
+  exercises every EPD-specific path including the Module D negative,
+  the inline-vs-chain unit disagreement, and the INA convention.
+- The real-ÖKOBAUDAT smoke test at
+  [`engine/io-ilcd-linker/tests/oekobaudat_smoke.rs`](engine/io-ilcd-linker/tests/oekobaudat_smoke.rs)
+  remains `#[ignore]`-gated behind `OEKOBAUDAT_BUNDLE=...` per the
+  ND clause.
+
+**Reversal condition:** If a later ILCD+EPD version breaks the
+stage-stratification invariant (e.g. reintroduces a collapsed
+"total" field that must be authoritative), revisit (1). If any EPD
+consumer case study shows that silent inline-UUID fallback to
+`shortDescription` is masking real errors, tighten (2) to hard-fail
+instead of warning.
+
+---
+
 ## 2026-04-19 · `D-0007` — Ship both AR6 and AR5 GWP100 (Option D); AR6 is default
 
 **Decision:** v0.0.1 ships **two** IPCC GWP100 presets as first-class

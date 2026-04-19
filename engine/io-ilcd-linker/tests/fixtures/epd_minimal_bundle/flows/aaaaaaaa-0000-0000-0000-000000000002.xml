@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flowDataSet xmlns="http://lca.jrc.it/ILCD/Flow" xmlns:common="http://lca.jrc.it/ILCD/Common" version="1.1">
+  <flowInformation>
+    <dataSetInformation>
+      <common:UUID>aaaaaaaa-0000-0000-0000-000000000002</common:UUID>
+      <name>
+        <baseName xml:lang="en">Use of renewable primary energy as energy carrier (PERE)</baseName>
+      </name>
+    </dataSetInformation>
+    <quantitativeReference>
+      <referenceToReferenceFlowProperty>0</referenceToReferenceFlowProperty>
+    </quantitativeReference>
+  </flowInformation>
+  <modellingAndValidation>
+    <LCIMethod>
+      <typeOfDataSet>Elementary flow</typeOfDataSet>
+    </LCIMethod>
+  </modellingAndValidation>
+  <flowProperties>
+    <flowProperty dataSetInternalID="0">
+      <referenceToFlowPropertyDataSet refObjectId="aaaaaaaa-0000-0000-0000-000000000010" type="flow property data set" uri="../flowproperties/aaaaaaaa-0000-0000-0000-000000000010.xml">
+        <common:shortDescription xml:lang="en">Mass</common:shortDescription>
+      </referenceToFlowPropertyDataSet>
+      <meanValue>1.0</meanValue>
+    </flowProperty>
+  </flowProperties>
+</flowDataSet>

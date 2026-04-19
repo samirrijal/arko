@@ -25,7 +25,7 @@ fn directory_bundle_resolves_flow() {
     assert_eq!(flow.base_name, "Carbon dioxide, fossil");
     assert_eq!(flow.flow_type, FlowType::Elementary);
     assert_eq!(flow.cas.as_deref(), Some("124-38-9"));
-    assert_eq!(flow.reference_flow_property_id, 0);
+    assert_eq!(flow.reference_flow_property_id, Some(0));
 
     let ref_fp = flow
         .reference_flow_property()

@@ -53,4 +53,13 @@ pub enum LinkError {
         referrer: &'static str,
         id: i32,
     },
+
+    /// The flow dataset published no `<quantitativeReference>` and the
+    /// process exchange that points at it supplied no inline
+    /// `<epd:referenceToUnitGroupDataSet>` either — there is no path
+    /// to a unit. Encountered occasionally on ÖKOBAUDAT product flows
+    /// whose publishers forgot to declare a flow-property table.
+    /// Classified as a bundle-level data gap, not an engine bug.
+    #[error("flow `{flow_uuid}` has no unit derivation path (no quantitativeReference on the flow, no inline epd:referenceToUnitGroupDataSet on the exchange)")]
+    FlowHasNoUnitDerivation { flow_uuid: String },
 }

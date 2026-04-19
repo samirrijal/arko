@@ -117,6 +117,14 @@ database, not just the synthetic bundle.
   `--nocapture` — a shape-survey of whatever the current OEKOBAUDAT
   release contains, useful for deciding which specific UUIDs are
   stable enough for stricter known-value assertions later.
+- Engine vs publisher-gap classification: bridge errors that are
+  `LinkError::Io` (missing flow / flow-property / unit-group XML on
+  disk) or `LinkError::FlowHasNoUnitDerivation` are counted as
+  **bundle data gaps** (ÖKOBAUDAT publishes ~105 processes that point
+  at flow UUIDs it doesn't ship) and tolerated; anything else is an
+  **engine failure** and must be zero. The test only asserts on
+  engine failures, so ÖKOBAUDAT's publisher-side gaps don't mask real
+  engine regressions.
 - **Not committed to the repo**: OEKOBAUDAT is CC-BY-ND-3.0-DE. The
   maintainer downloads the bundle, unzips it, and points the env var
   at the root. `.gitignore` excludes
@@ -127,6 +135,124 @@ database, not just the synthetic bundle.
   with an expected GWP100 contribution) are deferred until LCIA
   method support lands — those tests can't be written without
   `arko-methods` consuming impact-factor tables.
+- **Current smoke result against ÖKOBAUDAT 2024-I (3,075 processes):**
+  2,970 / 3,075 clean (96.6%), 0 engine failures, 56,430 exchanges
+  resolved across 7 reference units (MJ 29747, kg 21779, m³ 3218,
+  qm 991, pcs 590, m 102, a 3). The remaining 105 are publisher-side
+  data gaps — missing flow XMLs or flows with no unit derivation
+  path. Flow type distribution: Other 53460, Product 2967, Waste 3.
+
+### Added — ILCD+EPD v1.2 extension support (Phase 1, Week 4)
+
+Extend `arko-io-ilcd` + `arko-io-ilcd-linker` to read the **ILCD+EPD
+v1.2** superset used by ÖKOBAUDAT, EPD Norge, and Environdec. ÖKOBAUDAT
+does not validate as plain ILCD — every process exchange uses EN 15804
+stage stratification (`<epd:amount module="A1-A3">...</epd:amount>`)
+and indicator flows frequently inline their unit group with
+`<epd:referenceToUnitGroupDataSet>`. Without v1.2 support, 0 / 3,075
+ÖKOBAUDAT processes pipelined clean.
+
+**Guiding principle:** silent wrongness is worse than loud refusal.
+Every extension path surfaces as a typed structured warning rather
+than defaulting, so downstream callers route to log / telemetry / UI
+as they see fit.
+
+**Schema — `arko-io-ilcd`:**
+- `EpdModuleAmount { module, scenario, amount }` captured per
+  exchange — **stage stratification preserved**, not flattened.
+  `module` is the EN 15804 life-cycle stage label (`A1-A3`, `B6`,
+  `C4`, `D`, …). Module D amounts stay negative per EN 15804+A2
+  convention (benefits beyond the system boundary); we do not flip
+  signs.
+- `Exchange.epd_modules: Vec<EpdModuleAmount>` — the stratified
+  amount table. Empty on vanilla ILCD.
+- `Exchange.epd_unit_group_uuid: Option<String>` — the inline
+  `<epd:referenceToUnitGroupDataSet>` when present. Authoritative
+  override of the flow chain's unit group per ÖKOBAUDAT author
+  convention.
+- `Exchange.epd_unit_group_short_description: Option<String>` —
+  the `<common:shortDescription>` inside the inline ref, kept as a
+  last-resort unit label when the unit-group XML isn't resolvable
+  (JRC reference-data unit groups are frequently not shipped with
+  ÖKOBAUDAT bundles).
+- `Exchange.exchange_direction_inferred: bool` — set when the
+  process omits `<exchangeDirection>` on the reference flow (common
+  in ÖKOBAUDAT). We infer `Output` with a warning, rather than
+  silently defaulting.
+- `ParseWarning::InferredDirection { data_set_internal_id,
+  is_reference_flow }` — typed warning on the dataset for every
+  inference. Emitted with `is_reference_flow: true` when the
+  omission is on the declared reference exchange.
+- `ProcessDataset.warnings: Vec<ParseWarning>` — new field carrying
+  all parse-time inferences. Forwarded verbatim onto the typed
+  column by the bridge.
+- Amount acceptance loosened: an exchange with `<epd:amount>`
+  elements (even all empty — "INA", Indicator Not Assessed) is
+  accepted with a scalar amount of 0.0 and the module table
+  populated. Empty-text `<epd:amount>` entries are silently dropped
+  (convention, not zeroed) since zeroing is quantitatively wrong.
+- Namespace-tolerant attribute reads: roxmltree's
+  `.attribute("module")` only matches empty-namespace attrs; added
+  `attr_by_local_name` helper to read `epd:module` / `epd:scenario`
+  regardless of prefix.
+
+**Schema — `arko-io-ilcd-linker`:**
+- `Flow.reference_flow_property_id: Option<i32>` (was `i32`) —
+  ILCD+EPD indicator flows routinely omit `<quantitativeReference>`
+  because their unit is declared inline on the exchange. Parser now
+  accepts that. `Flow::reference_flow_property()` returns `None`
+  when the field is absent.
+- `LinkError::FlowHasNoUnitDerivation { flow_uuid }` — new variant
+  returned by `resolve_reference_unit_from_flow` when the flow
+  declared no unit derivation path at all (neither
+  `<quantitativeReference>` nor inline unit group on any referring
+  exchange). Classified as a publisher-side data gap, not an engine
+  bug — the smoke test tolerates it.
+- `UnitResolutionSource::{FlowChain, EpdInline}` — per-exchange
+  provenance tag on `TypedExchange.unit_source`. `FlowChain` = the
+  unit came from walking flow → flow-property → unit-group. `EpdInline`
+  = the unit came from the exchange's `<epd:referenceToUnitGroupDataSet>`.
+- `BridgeWarning::UnitGroupDisagreement { data_set_internal_id,
+  flow_uuid, inline_unit_group_uuid, chain_unit_group_uuid }` —
+  emitted when inline unit-group UUID differs from the one the flow
+  chain walks to. **Inline wins** (authoritative), but we warn so
+  the mismatch is never silent.
+- `BridgeWarning::InlineUnitGroupUnresolved { data_set_internal_id,
+  flow_uuid, inline_unit_group_uuid, fallback_unit_label }` —
+  emitted when the inline unit group UUID is in the exchange but
+  the unit-group XML is missing from the bundle. The bridge falls
+  back to the inline `<common:shortDescription>` (usually
+  `"MJ"`, `"kg"`, …) so the column still gets a unit label.
+- `TypedColumn.parse_warnings` and `TypedColumn.bridge_warnings` —
+  warnings plumbed through from parse time and accumulated during
+  the bridge walk.
+
+**Fixture — `engine/io-ilcd-linker/tests/fixtures/epd_minimal_bundle/`:**
+- Hand-crafted synthetic ILCD+EPD v1.2 bundle — **not** a slice of
+  ÖKOBAUDAT (CC-BY-ND-3.0-DE). Six files: 2 flows, 2 flow properties,
+  2 unit groups (Mass + Energy), 1 process.
+- The process is deliberately pathological:
+  - Reference exchange (concrete) **omits `<exchangeDirection>`** →
+    exercises `ParseWarning::InferredDirection`.
+  - Indicator exchange (PERE) declares Mass in its flow chain but
+    **inlines Energy/MJ** via `<epd:referenceToUnitGroupDataSet>`
+    → exercises inline-priority AND
+    `BridgeWarning::UnitGroupDisagreement`.
+  - PERE carries 8 `<epd:amount>` entries across A1-A3, A4, A5,
+    C1-C4, D with **Module D negative** (`-0.48`, scenario
+    `"Recycled"`) → exercises EN 15804+A2 sign pass-through and
+    scenario capture.
+- 7 new integration tests in `tests/epd_bundle_tests.rs`.
+
+**Tests remain green on vanilla ILCD:** all 11 `arko-io-ilcd` tests
+and all 7 pre-existing `arko-io-ilcd-linker` bundle tests still pass
+unchanged. v1.2 is a strict superset — nothing about vanilla ILCD
+parse or resolution changes.
+
+**See** `DECISIONS.md` D-0009 for the design rationale, the four
+invariants (stage stratification, inline-unit priority, warn-don't-
+silently-default, INA dropped not zeroed), and the alternatives
+considered and rejected.
 
 ### Deferred from this crate (→ v0.2)
 

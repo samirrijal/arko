@@ -54,7 +54,9 @@ pub mod unitgroup;
 mod xml;
 
 pub use bundle::DirectoryBundle;
-pub use column::{build_typed_column, TypedColumn, TypedExchange};
+pub use column::{
+    build_typed_column, BridgeWarning, TypedColumn, TypedExchange, UnitResolutionSource,
+};
 pub use error::LinkError;
 pub use flow::{Flow, FlowPropertyRef, FlowType};
 pub use flowproperty::FlowProperty;

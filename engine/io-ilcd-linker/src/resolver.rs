@@ -52,13 +52,22 @@ pub fn resolve_reference_unit_from_flow<R: LinkResolver + ?Sized>(
     resolver: &R,
     flow: &Flow,
 ) -> Result<ReferenceUnit, LinkError> {
+    // Distinguish "flow declared no <quantitativeReference> at all"
+    // (a publisher data gap, occasionally seen in ÖKOBAUDAT) from
+    // "declared one but its ID isn't in the flow-property table"
+    // (a genuine dangling reference).
+    let Some(expected_id) = flow.reference_flow_property_id else {
+        return Err(LinkError::FlowHasNoUnitDerivation {
+            flow_uuid: flow.uuid.clone(),
+        });
+    };
     let ref_fp_ref =
         flow.reference_flow_property()
             .ok_or_else(|| LinkError::MissingInternalId {
                 path: std::path::PathBuf::new(),
                 elem: "flowProperties",
                 referrer: "referenceToReferenceFlowProperty",
-                id: flow.reference_flow_property_id,
+                id: expected_id,
             })?;
 
     let flow_property = resolver.resolve_flow_property(&ref_fp_ref.flow_property_uuid)?;

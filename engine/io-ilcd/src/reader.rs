@@ -13,11 +13,20 @@
 
 use crate::{
     error::IlcdError,
-    model::{Direction, Exchange, ProcessDataset, ProcessInformation, QuantitativeReference},
+    model::{
+        Direction, EpdModuleAmount, Exchange, ParseWarning, ProcessDataset, ProcessInformation,
+        QuantitativeReference,
+    },
 };
 use roxmltree::{Document, Node};
 
 /// Parse an ILCD `<processDataSet>` XML document into a `ProcessDataset`.
+///
+/// Accepts both strict vanilla ILCD and ILCD+EPD v1.2 (ÖKOBAUDAT, EPD
+/// Norge, Environdec construction category). EPD extensions surface on
+/// `Exchange::epd_modules` / `epd_unit_group_uuid`; non-fatal deviations
+/// (e.g. reference-flow exchange omitting `<exchangeDirection>`) are
+/// collected on `ProcessDataset::warnings` rather than silently accepted.
 pub fn parse_process(xml: &str) -> Result<ProcessDataset, IlcdError> {
     let doc = Document::parse(xml)?;
     let root = doc.root_element();
@@ -28,17 +37,23 @@ pub fn parse_process(xml: &str) -> Result<ProcessDataset, IlcdError> {
 
     let process_information = parse_process_information(&root)?;
     let quantitative_reference = parse_quantitative_reference(&root)?;
-    let exchanges = parse_exchanges(&root)?;
+    let reference_internal_id = quantitative_reference.reference_to_reference_flow;
+    let (exchanges, warnings) = parse_exchanges(&root, reference_internal_id)?;
 
-    let target = quantitative_reference.reference_to_reference_flow;
-    if !exchanges.iter().any(|e| e.data_set_internal_id == target) {
-        return Err(IlcdError::MissingReferenceFlow { id: target });
+    if !exchanges
+        .iter()
+        .any(|e| e.data_set_internal_id == reference_internal_id)
+    {
+        return Err(IlcdError::MissingReferenceFlow {
+            id: reference_internal_id,
+        });
     }
 
     Ok(ProcessDataset {
         process_information,
         quantitative_reference,
         exchanges,
+        warnings,
     })
 }
 
@@ -118,18 +133,29 @@ fn parse_quantitative_reference(root: &Node<'_, '_>) -> Result<QuantitativeRefer
     })
 }
 
-fn parse_exchanges(root: &Node<'_, '_>) -> Result<Vec<Exchange>, IlcdError> {
+fn parse_exchanges(
+    root: &Node<'_, '_>,
+    reference_internal_id: i32,
+) -> Result<(Vec<Exchange>, Vec<ParseWarning>), IlcdError> {
     let Some(exchanges_node) = first_child(root, &["exchanges"]) else {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     };
-    exchanges_node
+    let mut exchanges = Vec::new();
+    let mut warnings = Vec::new();
+    for n in exchanges_node
         .children()
         .filter(|n| n.is_element() && n.has_tag_name("exchange"))
-        .map(|n| parse_exchange(&n))
-        .collect()
+    {
+        exchanges.push(parse_exchange(&n, reference_internal_id, &mut warnings)?);
+    }
+    Ok((exchanges, warnings))
 }
 
-fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
+fn parse_exchange(
+    node: &Node<'_, '_>,
+    reference_internal_id: i32,
+    warnings: &mut Vec<ParseWarning>,
+) -> Result<Exchange, IlcdError> {
     let data_set_internal_id = attr_parse::<i32>(node, "exchange", "dataSetInternalID")?;
 
     let flow_ref = first_child(node, &["referenceToFlowDataSet"])
@@ -140,9 +166,24 @@ fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
         .map(text)
         .filter(|s| !s.is_empty());
 
-    let direction_node = first_child(node, &["exchangeDirection"])
-        .ok_or(IlcdError::MissingElement("exchangeDirection"))?;
-    let direction = parse_direction(text(direction_node))?;
+    // Vanilla ILCD requires <exchangeDirection>. ILCD+EPD v1.2
+    // routinely omits it on the reference-flow exchange (direction is
+    // implicitly Output by EN 15804 convention). We default and WARN
+    // rather than silently filling in — the dataset's intent may have
+    // been to mark an Input-direction reference flow on a waste-
+    // treatment process, where the conventional default is wrong.
+    let (direction, exchange_direction_inferred) =
+        match first_child(node, &["exchangeDirection"]).map(text) {
+            Some(raw) if !raw.trim().is_empty() => (parse_direction(raw)?, false),
+            _ => {
+                let is_ref = data_set_internal_id == reference_internal_id;
+                warnings.push(ParseWarning::InferredDirection {
+                    data_set_internal_id,
+                    is_reference_flow: is_ref,
+                });
+                (Direction::Output, true)
+            }
+        };
 
     let mean_amount = first_child(node, &["meanAmount"])
         .map(|n| parse_finite(n, "meanAmount"))
@@ -151,13 +192,6 @@ fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
         .map(|n| parse_finite(n, "resultingAmount"))
         .transpose()?;
 
-    let (mean_amount, resulting_amount) = match (mean_amount, resulting_amount) {
-        (Some(m), Some(r)) => (m, r),
-        (Some(m), None) => (m, m),
-        (None, Some(r)) => (r, r),
-        (None, None) => return Err(IlcdError::MissingElement("meanAmount")),
-    };
-
     let reference_to_variable = first_child(node, &["referenceToVariable"])
         .map(text)
         .filter(|s| !s.is_empty());
@@ -165,6 +199,34 @@ fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
     let data_derivation_type_status = first_child(node, &["dataDerivationTypeStatus"])
         .map(text)
         .filter(|s| !s.is_empty());
+
+    let EpdExtensions {
+        modules: epd_modules,
+        unit_group_uuid: epd_unit_group_uuid,
+        unit_group_short_description: epd_unit_group_short_description,
+        saw_any_amount_element: has_epd_amount_element,
+    } = parse_epd_extensions(node)?;
+
+    // Vanilla ILCD requires meanAmount and/or resultingAmount.
+    // ILCD+EPD v1.2 indicator exchanges (PERE, PERM, GWP…, and the
+    // "general reminder flows" in ÖKOBAUDAT) carry only <epd:amount>
+    // module entries — we record the vanilla scalar as 0.0 and callers
+    // consult `epd_modules` for the real signal.
+    //
+    // Edge case: an EPD exchange whose every module is INA (empty
+    // `<epd:amount>` text). Those entries are dropped in
+    // parse_epd_extensions, so `epd_modules` can be empty even though
+    // the exchange *intended* to declare modules. Use the "did we see
+    // any <epd:amount> element at all" signal (including empty ones)
+    // to accept this shape — it is a declared-but-not-assessed row,
+    // not a malformed one.
+    let (mean_amount, resulting_amount) = match (mean_amount, resulting_amount) {
+        (Some(m), Some(r)) => (m, r),
+        (Some(m), None) => (m, m),
+        (None, Some(r)) => (r, r),
+        (None, None) if !epd_modules.is_empty() || has_epd_amount_element => (0.0, 0.0),
+        (None, None) => return Err(IlcdError::MissingElement("meanAmount")),
+    };
 
     Ok(Exchange {
         data_set_internal_id,
@@ -176,6 +238,114 @@ fn parse_exchange(node: &Node<'_, '_>) -> Result<Exchange, IlcdError> {
         resulting_amount,
         reference_to_variable,
         data_derivation_type_status,
+        epd_modules,
+        epd_unit_group_uuid,
+        epd_unit_group_short_description,
+        exchange_direction_inferred,
+    })
+}
+
+/// Parsed ILCD+EPD v1.2 extension payload from an exchange's
+/// `<c:other>` block. `saw_any_amount_element` is `true` even when every
+/// `<epd:amount>` element had empty (INA) text — it tells the caller
+/// "this exchange declared itself as EPD-indicator-shaped, even
+/// though no numeric values came through". `unit_group_short_description`
+/// is the human-readable unit label (`"kg"`, `"MJ"`, `"kg CO₂-Äq."`)
+/// from inside `<epd:referenceToUnitGroupDataSet>`. All fields are
+/// empty / None / false for vanilla ILCD exchanges.
+struct EpdExtensions {
+    modules: Vec<EpdModuleAmount>,
+    unit_group_uuid: Option<String>,
+    unit_group_short_description: Option<String>,
+    saw_any_amount_element: bool,
+}
+
+/// Pull EPD v1.2 extensions out of the exchange's `<c:other>` block.
+fn parse_epd_extensions(node: &Node<'_, '_>) -> Result<EpdExtensions, IlcdError> {
+    let Some(other) = first_child(node, &["other"]) else {
+        return Ok(EpdExtensions {
+            modules: Vec::new(),
+            unit_group_uuid: None,
+            unit_group_short_description: None,
+            saw_any_amount_element: false,
+        });
+    };
+
+    let mut modules = Vec::new();
+    let mut unit_group_uuid = None;
+    let mut unit_group_short_description: Option<String> = None;
+    let mut saw_any_amount_element = false;
+    for child in other.children().filter(Node::is_element) {
+        let local = child.tag_name().name();
+        if local == "amount" {
+            saw_any_amount_element = true;
+            // ILCD+EPD v1.2 publishers disagree on whether `module` /
+            // `scenario` are prefixed (`epd:module`) or unprefixed; the
+            // iai.kit.edu/EPD/2013 spec uses the latter, but real feeds
+            // (including some ÖKOBAUDAT vintages) emit the former.
+            // Match by local-name regardless of namespace.
+            let module = attr_by_local_name(&child, "module")
+                .ok_or(IlcdError::MissingAttribute {
+                    elem: "epd:amount",
+                    attr: "module",
+                })?
+                .to_owned();
+            let scenario = attr_by_local_name(&child, "scenario").map(str::to_owned);
+            // EN 15804+A2 / ILCD+EPD v1.2: an `<epd:amount>` with empty
+            // or whitespace-only text means "indicator not assessed"
+            // (INA) for that module/scenario. That is semantically
+            // distinct from zero, and publishers emit it prolifically
+            // for biogenic carbon, land use change, PM, etc. Drop the
+            // row silently — downstream code can treat an absent module
+            // entry as INA — rather than invent a zero.
+            let raw = text(child);
+            if raw.trim().is_empty() {
+                continue;
+            }
+            let amount = raw
+                .trim()
+                .parse::<f64>()
+                .map_err(|e| IlcdError::InvalidText {
+                    elem: "epd:amount",
+                    value: raw.clone(),
+                    reason: e.to_string(),
+                })
+                .and_then(|v| {
+                    if v.is_finite() {
+                        Ok(v)
+                    } else {
+                        Err(IlcdError::InvalidText {
+                            elem: "epd:amount",
+                            value: raw,
+                            reason: "non-finite amount".to_owned(),
+                        })
+                    }
+                })?;
+            modules.push(EpdModuleAmount {
+                module,
+                scenario,
+                amount,
+            });
+        } else if local == "referenceToUnitGroupDataSet" && unit_group_uuid.is_none() {
+            // First inline unit-group ref wins if there are (illegally)
+            // multiple — downstream bridge will still warn on any
+            // disagreement with the flow → flow-property chain.
+            unit_group_uuid = child.attribute("refObjectId").map(str::to_owned);
+            // Capture the inline `<common:shortDescription>` text —
+            // bridge code uses it as a fallback label when the UUID
+            // points at an external JRC reference dataset that isn't
+            // in the local bundle.
+            unit_group_short_description = first_child(&child, &["shortDescription"])
+                .map(text)
+                .filter(|s| !s.trim().is_empty());
+        }
+    }
+
+    Ok(EpdExtensions {
+        modules,
+        unit_group_uuid,
+        unit_group_short_description,
+        saw_any_amount_element,
     })
 }
 
@@ -219,6 +389,18 @@ fn first_child<'a, 'input>(node: &Node<'a, 'input>, names: &[&str]) -> Option<No
 
 fn text(node: Node<'_, '_>) -> String {
     node.text().map(str::to_owned).unwrap_or_default()
+}
+
+/// Look up an attribute by local name, ignoring namespace.
+///
+/// roxmltree's `node.attribute("foo")` only matches attributes with an
+/// empty namespace; namespace-prefixed attributes (`epd:module`) are
+/// invisible to it. For EPD extension parsing we want either form to
+/// resolve, so we scan the attribute list by local name.
+fn attr_by_local_name<'a>(node: &Node<'a, '_>, local: &str) -> Option<&'a str> {
+    node.attributes()
+        .find(|a| a.name() == local)
+        .map(|a| a.value())
 }
 
 fn attr_required(

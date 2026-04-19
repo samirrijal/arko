@@ -53,7 +53,15 @@ pub struct Flow {
     pub cas: Option<String>,
     /// Internal ID of the reference flow property (the one whose unit
     /// is used for `meanAmount` / `resultingAmount`).
-    pub reference_flow_property_id: i32,
+    ///
+    /// `None` when the flow dataset omits `<quantitativeReference>`
+    /// altogether — routine for ILCD+EPD v1.2 indicator flows (PERE,
+    /// GWP, …) whose unit is published inline on the process exchange
+    /// via `<epd:referenceToUnitGroupDataSet>`. Bridge code must fall
+    /// back to the inline ref in that case; flow-chain resolution is
+    /// not available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_flow_property_id: Option<i32>,
     /// Flow-property table. Always contains at least the reference
     /// entry; some flows declare multiple (e.g. energy ↔ mass for a
     /// fuel).
@@ -61,14 +69,18 @@ pub struct Flow {
 }
 
 impl Flow {
-    /// Lookup the reference flow-property entry. `None` if the dataset
-    /// declared a reference internal-ID that isn't in the flow-property
-    /// table — callers should treat that as `LinkError::MissingInternalId`.
+    /// Lookup the reference flow-property entry. `None` if:
+    /// - the flow declared no `<quantitativeReference>` at all (common
+    ///   for ILCD+EPD indicator flows), or
+    /// - it declared one that doesn't match any entry in the flow-
+    ///   property table.
+    ///
+    /// Bridge code distinguishes the two via `reference_flow_property_id`
+    /// itself.
     #[must_use]
     pub fn reference_flow_property(&self) -> Option<&FlowPropertyRef> {
-        self.flow_properties
-            .iter()
-            .find(|fp| fp.internal_id == self.reference_flow_property_id)
+        let id = self.reference_flow_property_id?;
+        self.flow_properties.iter().find(|fp| fp.internal_id == id)
     }
 }
 
@@ -111,19 +123,29 @@ pub fn parse_flow(xml: &str, path: &Path) -> Result<Flow, LinkError> {
         .map(node_text)
         .filter(|s| !s.is_empty());
 
-    let qr =
-        first_child(&fi, "quantitativeReference").ok_or_else(|| LinkError::MissingElement {
-            path: path.to_path_buf(),
-            elem: "quantitativeReference",
-        })?;
-    let ref_text = first_child(&qr, "referenceToReferenceFlowProperty")
-        .map(node_text)
-        .ok_or_else(|| LinkError::MissingElement {
-            path: path.to_path_buf(),
-            elem: "referenceToReferenceFlowProperty",
-        })?;
-    let reference_flow_property_id =
-        parse_int(&ref_text, "referenceToReferenceFlowProperty", path)?;
+    // `<quantitativeReference>` is required by the vanilla ILCD schema
+    // but ILCD+EPD v1.2 indicator flows (PERE, PERM, GWP, and the rest
+    // of the EN 15804+A2 catalogue) routinely omit it — their "unit"
+    // is injected at process-exchange time via
+    // `<epd:referenceToUnitGroupDataSet>`. Treat its absence as
+    // "no flow-chain unit available"; the bridge falls back to the
+    // inline ref.
+    let reference_flow_property_id = match first_child(&fi, "quantitativeReference") {
+        Some(qr) => {
+            let ref_text = first_child(&qr, "referenceToReferenceFlowProperty")
+                .map(node_text)
+                .ok_or_else(|| LinkError::MissingElement {
+                    path: path.to_path_buf(),
+                    elem: "referenceToReferenceFlowProperty",
+                })?;
+            Some(parse_int(
+                &ref_text,
+                "referenceToReferenceFlowProperty",
+                path,
+            )?)
+        }
+        None => None,
+    };
 
     let flow_type = first_child(&root, "modellingAndValidation")
         .and_then(|mv| first_child(&mv, "LCIMethod"))

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<processDataSet
+    xmlns="http://lca.jrc.it/ILCD/Process"
+    xmlns:common="http://lca.jrc.it/ILCD/Common"
+    xmlns:epd="http://www.iai.kit.edu/EPD/2013"
+    xmlns:epd2="http://www.indata.network/EPD/2019"
+    version="1.1">
+  <processInformation>
+    <dataSetInformation>
+      <common:UUID>aaaaaaaa-0000-0000-0000-000000000500</common:UUID>
+      <name>
+        <baseName xml:lang="en">Synthetic ILCD+EPD v1.2 precast concrete EPD</baseName>
+      </name>
+    </dataSetInformation>
+    <quantitativeReference>
+      <referenceToReferenceFlow>0</referenceToReferenceFlow>
+    </quantitativeReference>
+  </processInformation>
+  <exchanges>
+    <!--
+      Exchange 0: reference flow (precast concrete).
+      Intentionally omits <exchangeDirection> so the parser must emit
+      ParseWarning::InferredDirection { is_reference_flow: true }.
+    -->
+    <exchange dataSetInternalID="0">
+      <referenceToFlowDataSet refObjectId="aaaaaaaa-0000-0000-0000-000000000001" type="flow data set" uri="../flows/aaaaaaaa-0000-0000-0000-000000000001.xml">
+        <common:shortDescription xml:lang="en">Precast concrete C30/37</common:shortDescription>
+      </referenceToFlowDataSet>
+      <meanAmount>1.0</meanAmount>
+      <resultingAmount>1.0</resultingAmount>
+    </exchange>
+
+    <!--
+      Exchange 1: PERE indicator flow.
+      - Declared as Input.
+      - Carries no vanilla <meanAmount> — only <epd:amount> stage modules.
+      - Inline <epd:referenceToUnitGroupDataSet> points at Units of energy
+        (MJ, uuid ...101). The flow's own chain resolves to Units of mass
+        (kg, uuid ...100) — the bridge must emit
+        BridgeWarning::UnitGroupDisagreement and prefer the inline ref.
+      - Module D is negative, per EN 15804+A2 convention for benefits
+        beyond the system boundary.
+    -->
+    <exchange dataSetInternalID="1">
+      <referenceToFlowDataSet refObjectId="aaaaaaaa-0000-0000-0000-000000000002" type="flow data set" uri="../flows/aaaaaaaa-0000-0000-0000-000000000002.xml">
+        <common:shortDescription xml:lang="en">Use of renewable primary energy as energy carrier (PERE)</common:shortDescription>
+      </referenceToFlowDataSet>
+      <exchangeDirection>Input</exchangeDirection>
+      <common:other>
+        <epd:referenceToUnitGroupDataSet refObjectId="aaaaaaaa-0000-0000-0000-000000000101" type="unit group data set" uri="../unitgroups/aaaaaaaa-0000-0000-0000-000000000101.xml">
+          <common:shortDescription xml:lang="en">Units of energy</common:shortDescription>
+        </epd:referenceToUnitGroupDataSet>
+        <epd:amount epd:module="A1-A3">7.5</epd:amount>
+        <epd:amount epd:module="A4">0.12</epd:amount>
+        <epd:amount epd:module="A5">0.03</epd:amount>
+        <epd:amount epd:module="C1">0.0</epd:amount>
+        <epd:amount epd:module="C2">0.08</epd:amount>
+        <epd:amount epd:module="C3">0.0</epd:amount>
+        <epd:amount epd:module="C4">0.01</epd:amount>
+        <epd:amount epd:module="D" epd:scenario="Recycled">-0.48</epd:amount>
+      </common:other>
+    </exchange>
+  </exchanges>
+</processDataSet>
