@@ -6,6 +6,7 @@ authors:
   - family-names: Rijal
     given-names: Samir
     email: hicalcifer0@gmail.com
+    affiliation: "Goibix S.L."
 repository-code: "https://github.com/samirrijal/arko"
 abstract: >-
   Arko is an open-source life-cycle assessment (LCA) calculation engine
