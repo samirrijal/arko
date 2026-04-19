@@ -94,9 +94,13 @@ dependencies = [
 name = "arko-io-ilcd-linker"
 version = "0.0.1"
 dependencies = [
+ "arko-core",
  "arko-io-ilcd",
+ "arko-methods",
+ "arko-solvers-dense",
  "roxmltree",
  "serde",
+ "sprs",
  "thiserror",
 ]
 

@@ -17,3 +17,9 @@ thiserror.workspace = true
 serde = { workspace = true }
 roxmltree = "0.20"
 arko-io-ilcd.workspace = true
+
+[dev-dependencies]
+arko-core.workspace = true
+arko-methods.workspace = true
+arko-solvers-dense.workspace = true
+sprs.workspace = true
