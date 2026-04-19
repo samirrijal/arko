@@ -123,6 +123,85 @@ smoke). Reproducible by downloading the EF reference package 3.x
 zip from EPLCA and pointing `EF_REFERENCE_PACKAGE_BUNDLE` at the
 unpacked `ILCD/` subdirectory.
 
+### Observed — first end-to-end calc smoke on real EF data (Phase 1, Week 5)
+
+A wiring-only smoke verifying that the linker's `TypedColumn` output
+structurally feeds `arko-methods::build_c_matrix` and
+`arko-core::pipeline::compute` to a finite impact number on real
+JRC content. Harness at
+[`engine/io-ilcd-linker/tests/ef_carpet_calc_smoke.rs`](io-ilcd-linker/tests/ef_carpet_calc_smoke.rs),
+run against the same single-process EF 3.1 export as the prior
+single-process entry (process
+`972cd3cd-25bf-4b70-96e9-eab4bed329f7`, the EU+EFTA+UK 2023
+synthetic-turf carpet repurposing LCI result, 1 m² reference flow).
+
+**What was tested.** Exactly two questions: (1) does the bridge from
+linker output to engine input compile and execute without panic on
+real EF content at 20k-flow scale; (2) does the resulting `Study`
+solve to a finite impact number under both AR6 and AR5 GWP100. The
+test deliberately is **not** a methodology validation — no published
+reference number exists for this exact dataset, and the smoke
+asserts only `impact.is_finite()` plus shape invariants.
+
+**Result.**
+
+| method            | C nnz | match rate          | impact[0]                |
+|-------------------|------:|---------------------|--------------------------|
+| ipcc-ar6-gwp100   |    35 |  35/20288 (0.17%)   |  8.452703 kg CO2-eq / m² |
+| ipcc-ar5-gwp100   |    44 |  44/20288 (0.22%)   |  9.143786 kg CO2-eq / m² |
+
+20,288 elementary flows fed B (after excluding 1 reference product
+flow + 1 waste flow). Of those, 4,326 carry a CAS number (21%) and
+15,962 don't (79%) — mostly resources (air, aluminium, antimonite,
+argon, ores, water) for which CAS is structurally absent at the
+inventory level. The 0.17–0.22% match rate is **not** a reader bug:
+of ~20k EF elementary flows, only ~30–60 are GHG species AR6/AR5
+GWP100 characterizes. Hitting 35 (AR6) / 44 (AR5) intersects the
+registry cleanly.
+
+Wall-clock: typed-column build 102.8 s with the test-local
+`CachingResolver` wrapper (debug build, Windows laptop); FlowMeta
+construction 0.15 s; C-matrix construction 0.03–0.04 s per method;
+`compute()` 0.009–0.017 s per method. Whole test 105.8 s.
+
+**Plausibility check (informal).** Synthetic-turf-carpet systems in
+the published literature run 5–30 kg CO2-eq / m². Our 8.45–9.14 kg
+CO2-eq / m² lands in the lower end of that range — plausible for an
+*avoided-burden / repurposing* process where the credits partially
+offset the burdens. Order-of-magnitude pass; not a methodology
+proof.
+
+**The AR6 vs AR5 delta is the FlowOrigin gap, quantified.** AR6 is
+9 nonzeros lighter than AR5 (35 vs 44) and 0.69 kg CO2-eq lower
+(8.45 vs 9.14, ~7.5%). The 9 missing AR6 cells are almost certainly
+CH4 flows — `arko-io-ilcd-linker::Flow` carries no `FlowOrigin`,
+so AR6's `CasOrigin` matchers correctly skip CH4 (per the spec:
+"unspecified origin does not match — missing information surfaced
+rather than silently papered over"). AR5's plain `Cas` matcher,
+origin-agnostic, picks them up at 28x. **The CH4 fossil/non-fossil
+split that AR6 enforces costs us about 7.5% of total impact on this
+process** until origin parsing lands in the linker. That's a
+concrete number, not a hypothetical.
+
+**What this does *not* support.** Methodology correctness on this
+dataset (no reference value, sign convention passed verbatim with
+no Input/Output flip); calc correctness across the wider EF process
+catalogue (still N=1 process); FlowOrigin-aware CH4 matching; any
+multi-process LU exercise on EF (LCI result is pre-aggregated, A is
+1×1).
+
+**Concrete follow-up unblocked by this smoke**: extend
+`arko-io-ilcd-linker` to derive `FlowOrigin` from the ILCD flow XML
+(compartment path + name heuristics like *"Methane, fossil"* /
+*"Methane, biogenic"* / *"Methane, from soil or biomass stocks"*),
+then re-run this smoke to verify AR6 picks the missing 9 cells back
+up at 29.8 / 27.0 fossil/non-fossil. Tracked as its own piece of
+work — not a drive-by patch inside this smoke.
+
+Bundle is not redistributed; same posture as the prior two EF
+entries. Reproducible by setting `EF_REFERENCE_BUNDLE` and running
+the test under `--ignored --nocapture`.
+
 ### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
 
 First crate of Phase 1. Resolves the cross-document refs that
