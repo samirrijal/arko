@@ -122,11 +122,7 @@ fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
         ),
         cas_factor("2551-62-4", 25_200.0, "Sulfur hexafluoride (SF6)"),
         cas_factor("7783-54-2", 17_400.0, "Nitrogen trifluoride (NF3)"),
-        cas_factor(
-            "811-97-2",
-            1_530.0,
-            "HFC-134a (1,1,1,2-tetrafluoroethane)",
-        ),
+        cas_factor("811-97-2", 1_530.0, "HFC-134a (1,1,1,2-tetrafluoroethane)"),
         cas_factor("75-46-7", 14_600.0, "HFC-23 (trifluoromethane)"),
         cas_factor("75-10-5", 771.0, "HFC-32 (difluoromethane)"),
         cas_factor("75-73-0", 7_380.0, "PFC-14 (tetrafluoromethane, CF4)"),
