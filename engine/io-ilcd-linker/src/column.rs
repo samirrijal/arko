@@ -39,7 +39,7 @@ use arko_io_ilcd::{Direction, EpdModuleAmount, ProcessDataset};
 use serde::{Deserialize, Serialize};
 
 use crate::error::LinkError;
-use crate::flow::FlowType;
+use crate::flow::{FlowOrigin, FlowType};
 use crate::resolver::{resolve_reference_unit_from_flow, LinkResolver, ReferenceUnit};
 
 /// Where the reference unit for a `TypedExchange` came from.
@@ -106,6 +106,13 @@ pub struct TypedExchange {
     /// Elementary vs product vs waste — determines whether this
     /// exchange feeds a row of `B` or a column of `A`.
     pub flow_type: FlowType,
+    /// Carbon-cycle origin classifier copied from the resolved
+    /// `Flow.origin`. Drives AR6-style fossil/non-fossil
+    /// characterization downstream (chiefly CH4: AR6 GWP100 fossil =
+    /// 29.8, non-fossil = 27.0). `Unspecified` is the safe default —
+    /// AR6 matchers will skip rather than guess.
+    #[serde(default, skip_serializing_if = "FlowOrigin::is_unspecified")]
+    pub origin: FlowOrigin,
     /// Vanilla-ILCD `resultingAmount`, quoted in
     /// `reference_unit.unit_name`. For ILCD+EPD indicator flows this
     /// is usually 0.0 (no scalar provided); consult `epd_modules`.
@@ -245,6 +252,7 @@ pub fn build_typed_column<R: LinkResolver + ?Sized>(
             flow_uuid: ex.flow_uuid.clone(),
             flow_name: flow.base_name,
             flow_type: flow.flow_type,
+            origin: flow.origin,
             amount: ex.resulting_amount,
             reference_unit,
             unit_source,

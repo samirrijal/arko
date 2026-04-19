@@ -58,7 +58,7 @@ pub use column::{
     build_typed_column, BridgeWarning, TypedColumn, TypedExchange, UnitResolutionSource,
 };
 pub use error::LinkError;
-pub use flow::{Flow, FlowPropertyRef, FlowType};
+pub use flow::{Flow, FlowOrigin, FlowPropertyRef, FlowType};
 pub use flowproperty::FlowProperty;
 pub use resolver::{
     resolve_reference_unit, resolve_reference_unit_from_flow, LinkResolver, ReferenceUnit,

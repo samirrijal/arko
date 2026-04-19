@@ -94,8 +94,8 @@ use arko_core::{
 };
 use arko_io_ilcd::parse_process;
 use arko_io_ilcd_linker::{
-    build_typed_column, DirectoryBundle, Flow, FlowProperty, FlowType, LinkError, LinkResolver,
-    UnitGroup,
+    build_typed_column, DirectoryBundle, Flow, FlowOrigin as LinkerOrigin, FlowProperty, FlowType,
+    LinkError, LinkResolver, UnitGroup,
 };
 use arko_methods::{build_c_matrix, MethodRegistry};
 use arko_solvers_dense::DenseLuSolver;
@@ -261,7 +261,9 @@ fn ef_carpet_calc_smoke() {
     }
 
     // Build FlowMeta — one per elementary exchange. CAS comes from
-    // re-resolving via the cache (free after first pass).
+    // re-resolving via the cache (free after first pass). Origin is
+    // already on the typed exchange (parsed from the basename
+    // parenthetical by the linker).
     let t1 = Instant::now();
     let flows: Vec<FlowMeta> = elementary
         .iter()
@@ -275,17 +277,29 @@ fn ef_carpet_calc_smoke() {
                 unit: Unit::new(&ex.reference_unit.unit_name),
                 compartment: Vec::new(),
                 cas: flow.cas.clone(),
-                origin: FlowOrigin::Unspecified,
+                origin: linker_origin_to_core(ex.origin),
             }
         })
         .collect();
     let cas_with = flows.iter().filter(|f| f.cas.is_some()).count();
+    let origin_fossil = flows
+        .iter()
+        .filter(|f| matches!(f.origin, FlowOrigin::Fossil))
+        .count();
+    let origin_non_fossil = flows
+        .iter()
+        .filter(|f| matches!(f.origin, FlowOrigin::NonFossil))
+        .count();
     println!(
         "FlowMeta built:  {} elementary flows ({} with CAS, {} without) in {:.2}s",
         flows.len(),
         cas_with,
         flows.len() - cas_with,
         t1.elapsed().as_secs_f64(),
+    );
+    println!(
+        "  origin tagged: {origin_fossil} fossil, {origin_non_fossil} non-fossil, {} unspecified",
+        flows.len() - origin_fossil - origin_non_fossil,
     );
 
     let m = flows.len();
@@ -410,4 +424,16 @@ fn ef_carpet_calc_smoke() {
 
     println!();
     println!("--- end ef_carpet_calc_smoke ---");
+}
+
+/// Cross-crate mapping: linker `FlowOrigin` → engine `FlowOrigin`.
+/// Lives in this test (not in the linker) so the linker doesn't take
+/// a dependency on `arko-core`. Production code that bridges
+/// `TypedColumn` to `Study` will own its own version of this.
+fn linker_origin_to_core(o: LinkerOrigin) -> FlowOrigin {
+    match o {
+        LinkerOrigin::Fossil => FlowOrigin::Fossil,
+        LinkerOrigin::NonFossil => FlowOrigin::NonFossil,
+        LinkerOrigin::Unspecified => FlowOrigin::Unspecified,
+    }
 }

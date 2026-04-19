@@ -27,6 +27,48 @@ pub enum FlowType {
     Other,
 }
 
+/// Carbon-cycle origin classifier for elementary flows whose
+/// characterization factor depends on fossil vs non-fossil provenance
+/// (chiefly CH4 under IPCC AR6 GWP100, where fossil = 29.8 and
+/// non-fossil = 27.0).
+///
+/// This mirrors `arko_core::meta::FlowOrigin` rather than depending on
+/// it — the linker is a reader/bridge layer and shouldn't pull in the
+/// engine-side meta types. Callers that produce `FlowMeta` from a
+/// linker `Flow` translate at the boundary (the smoke test
+/// `ef_carpet_calc_smoke.rs` is the current example).
+///
+/// # Source of the classification
+///
+/// JRC EF / ÖKOBAUDAT / ILCD-network publishers encode the origin in
+/// the flow `<baseName>` as a trailing parenthetical:
+///
+/// - `methane (fossil)` → `Fossil`
+/// - `methane (biogenic)` → `NonFossil`
+/// - `methane (land use change)` → `NonFossil`
+///
+/// The parser ([`classify_flow_origin`]) recognises these and a small
+/// set of defensive synonyms; anything unrecognised falls through to
+/// `Unspecified` rather than guessing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FlowOrigin {
+    /// Carbon released from a geological reservoir (oil, gas, coal,
+    /// peat, limestone). AR6 GWP100 CH4 = 29.8.
+    Fossil,
+    /// Carbon released from the contemporary biosphere (biogenic
+    /// emissions, land-use-change emissions, short-cycle carbon).
+    /// AR6 GWP100 CH4 = 27.0.
+    NonFossil,
+    /// Either the flow is not origin-sensitive (CO2, N2O, …) or the
+    /// publisher did not classify it. Per spec §matching, AR6's
+    /// `CasOrigin` matchers do **not** match `Unspecified` — missing
+    /// information surfaces as `unmatched_flows` rather than being
+    /// silently characterized.
+    #[default]
+    Unspecified,
+}
+
 /// One `<flowProperty>` entry in the flow's flow-property table —
 /// the mapping from internal ID to an external FlowProperty dataset.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,6 +90,11 @@ pub struct Flow {
     pub uuid: String,
     pub base_name: String,
     pub flow_type: FlowType,
+    /// Fossil / non-fossil / unspecified, derived from the basename
+    /// parenthetical. See [`FlowOrigin`] for the classification
+    /// vocabulary and rationale.
+    #[serde(default, skip_serializing_if = "FlowOrigin::is_unspecified")]
+    pub origin: FlowOrigin,
     /// CAS number, if the dataset is an elementary chemical flow.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cas: Option<String>,
@@ -66,6 +113,16 @@ pub struct Flow {
     /// entry; some flows declare multiple (e.g. energy ↔ mass for a
     /// fuel).
     pub flow_properties: Vec<FlowPropertyRef>,
+}
+
+impl FlowOrigin {
+    /// `true` iff this origin carries no information — used by the
+    /// `skip_serializing_if` guard so default-valued fields stay out
+    /// of serialized JSON.
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
+    }
 }
 
 impl Flow {
@@ -154,12 +211,15 @@ pub fn parse_flow(xml: &str, path: &Path) -> Result<Flow, LinkError> {
         .as_deref()
         .map_or(FlowType::Other, classify_flow_type);
 
+    let origin = classify_flow_origin(&base_name);
+
     let flow_properties = parse_flow_properties(&root, path)?;
 
     Ok(Flow {
         uuid,
         base_name,
         flow_type,
+        origin,
         cas,
         reference_flow_property_id,
         flow_properties,
@@ -218,5 +278,133 @@ fn classify_flow_type(s: &str) -> FlowType {
         "Product flow" => FlowType::Product,
         "Waste flow" => FlowType::Waste,
         _ => FlowType::Other,
+    }
+}
+
+/// Derive [`FlowOrigin`] from a flow's `<baseName>`.
+///
+/// The basename's trailing parenthetical carries the publisher's
+/// origin classification, e.g. `methane (fossil)` /
+/// `methane (biogenic)` / `methane (land use change)`. Recognised
+/// tags map to `Fossil` / `NonFossil`; anything else (no parenthetical,
+/// unknown vocabulary) falls through to `Unspecified` so that AR6's
+/// matchers surface the gap rather than silently guess.
+///
+/// Comparison is case-insensitive on the inner tag. The recognised
+/// non-fossil synonyms cover the JRC EF / ÖKOBAUDAT / ILCD-network
+/// vocabulary observed in the wild as of v0.0.1; new variants land
+/// here as we encounter them.
+fn classify_flow_origin(base_name: &str) -> FlowOrigin {
+    let trimmed = base_name.trim();
+    let Some(open) = trimmed.rfind('(') else {
+        return FlowOrigin::Unspecified;
+    };
+    if !trimmed.ends_with(')') {
+        return FlowOrigin::Unspecified;
+    }
+    // Inner = the contents between the last `(` and the trailing `)`.
+    let inner = trimmed[open + 1..trimmed.len() - 1]
+        .trim()
+        .to_ascii_lowercase();
+    match inner.as_str() {
+        "fossil" => FlowOrigin::Fossil,
+        "biogenic"
+        | "non-fossil"
+        | "land use change"
+        | "short cycle"
+        | "from soil or biomass stocks" => FlowOrigin::NonFossil,
+        _ => FlowOrigin::Unspecified,
+    }
+}
+
+#[cfg(test)]
+mod origin_tests {
+    use super::{classify_flow_origin, FlowOrigin};
+
+    #[test]
+    fn fossil_parenthetical_is_fossil() {
+        assert_eq!(
+            classify_flow_origin("methane (fossil)"),
+            FlowOrigin::Fossil
+        );
+        assert_eq!(
+            classify_flow_origin("Carbon dioxide (fossil)"),
+            FlowOrigin::Fossil
+        );
+    }
+
+    #[test]
+    fn biogenic_and_synonyms_are_non_fossil() {
+        for name in [
+            "methane (biogenic)",
+            "methane (land use change)",
+            "carbon dioxide (non-fossil)",
+            "methane (short cycle)",
+            "carbon dioxide (from soil or biomass stocks)",
+        ] {
+            assert_eq!(
+                classify_flow_origin(name),
+                FlowOrigin::NonFossil,
+                "expected NonFossil for {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn case_is_insensitive_inside_parens() {
+        assert_eq!(
+            classify_flow_origin("methane (FOSSIL)"),
+            FlowOrigin::Fossil
+        );
+        assert_eq!(
+            classify_flow_origin("methane (Biogenic)"),
+            FlowOrigin::NonFossil
+        );
+    }
+
+    #[test]
+    fn no_parenthetical_is_unspecified() {
+        assert_eq!(classify_flow_origin("Carbon dioxide"), FlowOrigin::Unspecified);
+        assert_eq!(classify_flow_origin("water"), FlowOrigin::Unspecified);
+    }
+
+    #[test]
+    fn unrecognised_parenthetical_is_unspecified() {
+        // We don't guess. AR6 surfacing the flow as unmatched is
+        // preferable to silently characterizing it under the wrong
+        // factor.
+        assert_eq!(
+            classify_flow_origin("methane (high-altitude)"),
+            FlowOrigin::Unspecified
+        );
+        assert_eq!(
+            classify_flow_origin("methane (anaerobic digestion)"),
+            FlowOrigin::Unspecified
+        );
+    }
+
+    #[test]
+    fn only_trailing_parenthetical_is_inspected() {
+        // A non-trailing parenthetical (e.g. an inline qualifier) is
+        // ignored; we only look at the last `(...)` group, and only
+        // when it sits at the end of the basename.
+        assert_eq!(
+            classify_flow_origin("methane (anthropogenic) emission"),
+            FlowOrigin::Unspecified,
+            "non-trailing parenthetical should not classify"
+        );
+        // Last parenthetical wins when basename ends with one.
+        assert_eq!(
+            classify_flow_origin("methane (urban) (fossil)"),
+            FlowOrigin::Fossil
+        );
+    }
+
+    #[test]
+    fn whitespace_trimmed_inside_parens() {
+        assert_eq!(
+            classify_flow_origin("methane (  fossil  )"),
+            FlowOrigin::Fossil
+        );
     }
 }
