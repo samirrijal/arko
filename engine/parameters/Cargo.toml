@@ -1,0 +1,17 @@
+[package]
+name = "arko-parameters"
+description = "Arko parameter expression evaluator and dependency-DAG topological evaluator. Implements specs/calc/v0.1.md §5."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+thiserror.workspace = true

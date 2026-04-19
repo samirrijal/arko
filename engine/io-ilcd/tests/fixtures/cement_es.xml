@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<processDataSet xmlns="http://lca.jrc.it/ILCD/Process"
+                xmlns:common="http://lca.jrc.it/ILCD/Common"
+                version="1.1">
+  <processInformation>
+    <dataSetInformation>
+      <common:UUID>11111111-2222-3333-4444-555555555555</common:UUID>
+      <name>
+        <baseName xml:lang="en">Portland cement, CEM I</baseName>
+        <treatmentStandardsRoutes xml:lang="en">average Spanish plant, dry process</treatmentStandardsRoutes>
+      </name>
+    </dataSetInformation>
+    <quantitativeReference type="Reference flow(s)">
+      <referenceToReferenceFlow>1</referenceToReferenceFlow>
+    </quantitativeReference>
+    <time>
+      <common:referenceYear>2023</common:referenceYear>
+    </time>
+    <geography>
+      <locationOfOperationSupplyOrProduction location="ES"/>
+    </geography>
+  </processInformation>
+  <exchanges>
+    <exchange dataSetInternalID="1">
+      <referenceToFlowDataSet type="flow data set"
+                              refObjectId="aaaaaaaa-0000-0000-0000-000000000001"
+                              uri="../flows/aaaaaaaa-0000-0000-0000-000000000001.xml">
+        <common:shortDescription xml:lang="en">Portland cement, CEM I</common:shortDescription>
+      </referenceToFlowDataSet>
+      <exchangeDirection>Output</exchangeDirection>
+      <meanAmount>1.0</meanAmount>
+      <resultingAmount>1.0</resultingAmount>
+      <dataDerivationTypeStatus>Measured</dataDerivationTypeStatus>
+    </exchange>
+    <exchange dataSetInternalID="2">
+      <referenceToFlowDataSet type="flow data set"
+                              refObjectId="aaaaaaaa-0000-0000-0000-000000000002"
+                              uri="../flows/aaaaaaaa-0000-0000-0000-000000000002.xml">
+        <common:shortDescription xml:lang="en">Electricity, low voltage, ES grid</common:shortDescription>
+      </referenceToFlowDataSet>
+      <exchangeDirection>Input</exchangeDirection>
+      <meanAmount>0.110</meanAmount>
+      <resultingAmount>0.110</resultingAmount>
+      <referenceToVariable>elec_intensity</referenceToVariable>
+      <dataDerivationTypeStatus>Calculated</dataDerivationTypeStatus>
+    </exchange>
+    <exchange dataSetInternalID="3">
+      <referenceToFlowDataSet type="flow data set"
+                              refObjectId="bbbbbbbb-0000-0000-0000-000000000001"
+                              uri="../flows/bbbbbbbb-0000-0000-0000-000000000001.xml">
+        <common:shortDescription xml:lang="en">Carbon dioxide, fossil</common:shortDescription>
+      </referenceToFlowDataSet>
+      <exchangeDirection>Output</exchangeDirection>
+      <meanAmount>0.85</meanAmount>
+      <resultingAmount>0.85</resultingAmount>
+      <dataDerivationTypeStatus>Measured</dataDerivationTypeStatus>
+    </exchange>
+  </exchanges>
+</processDataSet>

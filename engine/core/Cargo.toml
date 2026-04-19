@@ -1,0 +1,25 @@
+[package]
+name = "arko-core"
+description = "Arko calculation engine — core types. Implements specs/calc/v0.1.md (§4-§13) and the §4.3 pipeline."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sprs.workspace = true
+thiserror.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+chrono.workspace = true
+blake3.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+arko-solvers-dense.workspace = true

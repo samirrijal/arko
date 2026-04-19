@@ -1,0 +1,22 @@
+[package]
+name = "arko-units"
+description = "Arko UCUM-compatible unit parser, dimensional analysis, and conversions — covers the LCA subset of UCUM plus semantic tags (CO2-eq, PM2.5-eq, etc.)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+serde = { workspace = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+serde_json.workspace = true

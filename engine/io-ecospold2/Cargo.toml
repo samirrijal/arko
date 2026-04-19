@@ -1,0 +1,21 @@
+[package]
+name = "arko-io-ecospold2"
+description = "Arko ecospold2 XML reader — parses ecoinvent v2/v3 activity dataset documents into typed Rust structs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true }
+roxmltree = "0.20"
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,25 @@
+[package]
+name = "arko-sensitivity"
+description = "Arko incremental recalc — Sherman-Morrison-Woodbury rank-r updates per specs/calc/v0.1.md §10."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+nalgebra.workspace = true
+sprs.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+arko-solvers-dense.workspace = true
+approx.workspace = true

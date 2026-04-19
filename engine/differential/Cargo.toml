@@ -1,0 +1,27 @@
+[package]
+name = "arko-differential"
+description = "Arko conformance harness — test vectors, property tests, and report generator per specs/calc/v0.1.md §14."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+arko-methods.workspace = true
+arko-sensitivity.workspace = true
+sprs.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+arko-solvers-dense.workspace = true
+approx.workspace = true

@@ -1,0 +1,48 @@
+# Arko — License Policy
+
+Arko is a **dual-licensed monorepo**. Different packages carry different licenses
+by design. This root file is a policy document; individual packages carry their
+own `LICENSE` file which is authoritative for that package.
+
+## Summary
+
+| Area                              | License              | Rationale                                                    |
+| --------------------------------- | -------------------- | ------------------------------------------------------------ |
+| `specs/`                          | CC-BY-4.0            | Public specifications. Attribution, no restrictions on use.  |
+| `engine/` (calc engine core)      | Apache-2.0           | Generic LCA math is not the moat. OSS builds credibility.    |
+| `engine/solvers/`                 | Apache-2.0           | Sparse linear algebra. Generic.                              |
+| `engine/io/`                      | Apache-2.0           | Parsers for ecospold2, ILCD, EPDX, OpenLCA JSON-LD.          |
+| `api/` (generic server scaffold)  | Apache-2.0           | Axum/SQLx boilerplate has no product value alone.            |
+| `web/` (UI)                       | Proprietary          | The product experience is commercial.                        |
+| `services/` (commercial backends) | Proprietary          | Billing, license enforcement, workspace management.          |
+| `docs/`                           | CC-BY-4.0            | Public documentation.                                        |
+
+## Why split this way
+
+Per v2 architectural commitment **C9 (OSS-generic / closed-commercial)**:
+
+- **Open the primitives.** Anyone should be able to audit the math, reproduce
+  results, and verify that Arko does what it says it does. This is how we earn
+  trust in a domain (LCA) that has been historically opaque.
+- **Keep the product closed.** UX, workflows, integrations, and the hosted
+  service are how Arko makes money. Those do not ship as open source.
+- **Never hold users hostage.** Data export in open formats (ecospold2, EPDX,
+  OpenLCA JSON-LD) is a permanent commitment, not a feature flag. See C10.
+
+## Third-party data
+
+Arko integrates with third-party databases (ecoinvent, GaBi, industry PCRs).
+These have their **own licenses** that restrict redistribution, result
+publication, and derivative use. Arko does not ship these databases. Users
+bring their own licenses. See `specs/license/` for how license-tier is
+propagated through the calculation graph and enforced at publish time.
+
+## Contributing
+
+By contributing to any Apache-2.0 component, you agree that your contribution
+is licensed under Apache-2.0. Proprietary components do not accept outside
+contributions without a CLA.
+
+## Contact
+
+Goibix S.L. · Bilbao · legal@arko.earth

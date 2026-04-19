@@ -1,0 +1,64 @@
+# ---- Rust ----
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+.pnpm-store/
+*.tsbuildinfo
+.next-env.d.ts
+
+# ---- Python (if any tooling) ----
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+.vault-token
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+!.vscode/settings.json.example
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Build artifacts ----
+*.log
+coverage/
+.nyc_output/
+.coverage
+htmlcov/
+
+# ---- Ephemeral ----
+tmp/
+.tmp/
+*.tmp
+
+# ---- Calc engine benchmark outputs ----
+engine/benches/results/
+engine/differential/reports/
+
+# ---- Local databases / caches ----
+*.sqlite
+*.sqlite-journal
+.cache/

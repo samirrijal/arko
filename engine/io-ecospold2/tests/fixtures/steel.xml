@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecoSpold xmlns="http://www.EcoInvent.org/EcoSpold02">
+  <activityDataset>
+    <activityDescription>
+      <activity id="a0000000-0000-0000-0000-000000000001"
+                activityNameId="b0000000-0000-0000-0000-000000000001"
+                activityType="1">
+        <activityName xml:lang="en">steel production, unalloyed</activityName>
+      </activity>
+      <geography>
+        <shortname xml:lang="en">GLO</shortname>
+      </geography>
+    </activityDescription>
+    <flowData>
+      <intermediateExchange id="e0000000-0000-0000-0000-000000000001"
+                            intermediateExchangeId="p0000000-0000-0000-0000-000000000001"
+                            amount="1.0"
+                            unitName="kg">
+        <name xml:lang="en">steel, unalloyed</name>
+        <outputGroup>0</outputGroup>
+      </intermediateExchange>
+      <intermediateExchange id="e0000000-0000-0000-0000-000000000002"
+                            intermediateExchangeId="p0000000-0000-0000-0000-000000000002"
+                            activityLinkId="a0000000-0000-0000-0000-000000000002"
+                            amount="0.5"
+                            unitName="MJ">
+        <name xml:lang="en">electricity, medium voltage</name>
+        <inputGroup>5</inputGroup>
+      </intermediateExchange>
+      <elementaryExchange id="e0000000-0000-0000-0000-000000000003"
+                          elementaryExchangeId="f0000000-0000-0000-0000-000000000001"
+                          amount="2.0"
+                          unitName="kg"
+                          casNumber="124-38-9">
+        <name xml:lang="en">Carbon dioxide, fossil</name>
+        <compartment>
+          <compartment xml:lang="en">air</compartment>
+          <subcompartment xml:lang="en">urban air close to ground</subcompartment>
+        </compartment>
+        <outputGroup>4</outputGroup>
+      </elementaryExchange>
+    </flowData>
+  </activityDataset>
+</ecoSpold>

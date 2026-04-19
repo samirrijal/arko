@@ -1,0 +1,38 @@
+name: specs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "specs/**"
+      - ".github/workflows/specs.yml"
+  pull_request:
+    paths:
+      - "specs/**"
+      - ".github/workflows/specs.yml"
+
+concurrency:
+  group: specs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: markdown lint + link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: "specs/**/*.md"
+
+      - name: Check internal links
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >-
+            --no-progress
+            --offline
+            --verbose
+            specs/**/*.md
+          fail: true

@@ -1,0 +1,23 @@
+[package]
+name = "arko-license"
+description = "Arko license-tier evaluator — rule firing and publish/share/export authorization per specs/calc/v0.1.md §11."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+serde = { workspace = true }
+chrono.workspace = true
+
+[dev-dependencies]
+arko-solvers-dense.workspace = true
+sprs.workspace = true
+serde_json.workspace = true

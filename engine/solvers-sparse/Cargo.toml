@@ -1,0 +1,23 @@
+[package]
+name = "arko-solvers-sparse"
+description = "Arko sparse LU solver — faer-backed. Intended for medium studies (100 ≤ n < 10_000) per specs/calc/v0.1.md §6.3."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+sprs.workspace = true
+faer.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+arko-solvers-dense.workspace = true
