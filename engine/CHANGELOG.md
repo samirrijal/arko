@@ -34,6 +34,52 @@ ecoinvent background). `D-0010` documents the refinement:
 sharpens the working definition of what "free" means for that
 commitment.
 
+### Observed — EF 3.1 reader-level generalisation smoke (Phase 1, Week 5)
+
+First real-data signal from the EF reference testing, 2026-04-19. The
+smoke harness at
+[`engine/io-ilcd-linker/tests/ef_reference_smoke.rs`](io-ilcd-linker/tests/ef_reference_smoke.rs)
+was run against an EF 3.1 background-processes export from the EC EF
+node (<http://eplca.jrc.ec.europa.eu/EF-node/>), export stamp
+`EF3_1_background_processes_2026-04-19T14_59_12`.
+
+Bundle contents: 1 process (LCI result
+`972cd3cd-25bf-4b70-96e9-eab4bed329f7`, landscaping synthetic turf
+system), 2,443 flows, 7 flow properties, 7 unit groups. Result:
+1 / 1 processes parsed; 0 engine failures; 0 bundle data gaps;
+20,290 exchanges resolved through the
+`flow → flowproperty → unitgroup → reference unit` chain; 7 distinct
+reference units (m², m²·a, kg, m³, kBq, MJ, m³·a); runtime ≈55 s on
+the maintainer Windows laptop (no resolver cache).
+
+What this supports: `arko-io-ilcd` parses plain ILCD (EF 3.1 Process
+v1.1 schema), not only the ILCD+EPD v1.2 superset used by ÖKOBAUDAT;
+`arko-io-ilcd-linker` resolves 20k+ elementary-flow chains on
+JRC-blessed content with zero engine error. The "is the reader
+secretly tuned to ÖKOBAUDAT idioms" concern is falsified at the
+reader level.
+
+What this does **not** yet support: reader robustness on broader EF
+3.1 content (N=1 here); end-to-end calculation correctness on EF 3.1
+data (no calculation performed; methods layer lands in Week 6);
+multi-process ILCD ingest on EF (the tested dataset is an LCI result,
+i.e. a pre-aggregated node, so no process-to-process product-flow
+linking was exercised). See the observation section of
+[`ef_reference_smoke.rs`](io-ilcd-linker/tests/ef_reference_smoke.rs)
+for the full characterisation, including the LCI-result-vs-unit-process
+nuance behind the 20k exchange count.
+
+Bundle is not redistributed (same posture as the ÖKOBAUDAT smoke —
+maintainer-downloaded, `#[ignore]`-gated, no fixture committed).
+Reproducible by anyone who exports the same stock from the EC EF node
+and points `EF_REFERENCE_BUNDLE` at the unpacked `ILCD/` subdirectory.
+
+Next steps tracked: (b) 94k-flow resolver-only smoke on the separate
+JRC EF reference package bundle for broader-than-ÖKOBAUDAT flow-parse
+evidence; (c) larger-N process export from the EC EF node (or from
+a free EF-compliant node per `D-0010`) for multi-process ingest
+evidence.
+
 ### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
 
 First crate of Phase 1. Resolves the cross-document refs that

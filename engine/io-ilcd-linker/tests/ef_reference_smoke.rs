@@ -53,6 +53,76 @@
 //! open-EU bundles we test — it's the spec-author's own. A non-trivial
 //! gap count here, or any engine failure, almost certainly indicates
 //! a real reader bug rather than a publisher issue.
+//!
+//! # Observed 2026-04-19 characterisation — single-process EF 3.1 bundle
+//!
+//! First run on 2026-04-19 against an EF 3.1 background-processes
+//! export downloaded from the European Commission's EF node
+//! (<http://eplca.jrc.ec.europa.eu/EF-node/>), timestamped
+//! `EF3_1_background_processes_2026-04-19T14_59_12`. The export
+//! contained **1 process**, 2,443 flows, 7 flow properties, 7 unit
+//! groups, 0 LCIA method files (methods live only in the separate
+//! reference-package bundle).
+//!
+//! Process tested: `972cd3cd-25bf-4b70-96e9-eab4bed329f7` —
+//! *"Repurposing of sports surfacing carpet – Avoided production of
+//! carpet manufacturing for landscaping applications"*,
+//! `<typeOfDataSet>LCI result</typeOfDataSet>`, reference year 2023,
+//! geography EU+EFTA+UK, reference flow 1 m² synthetic turf system
+//! (cradle-to-gate).
+//!
+//! Result: 1 / 1 processes ok, 0 engine failures, 0 bundle data gaps,
+//! **20,290 exchanges resolved** through the
+//! `flow → flowproperty → unitgroup → reference unit` chain. Flow-type
+//! distribution: Elementary 20,288 / Product 1 / Waste 1. Top
+//! reference units observed: `m²` 10,733; `m²·a` 4,980; `kg` 2,555;
+//! `m³` 1,768; `kBq` 223 (radioactive emissions, consistent with the
+//! background-processes curation scope); `MJ` 30; `m³·a` 1. Runtime
+//! ≈55 s on a Windows 11 maintainer laptop (no resolver cache; linear
+//! filesystem + XML parse per resolve).
+//!
+//! **Note — LCI result vs unit process.** The tested dataset is an
+//! *LCI result*: the full upstream life cycle pre-aggregated into a
+//! single process node whose exchanges are ~20k elementary flows plus
+//! a single product reference flow. It does **not** exercise
+//! process-to-process product-flow linking (there is no upstream
+//! graph at this node — it has already been collapsed). What the
+//! smoke evidences is the reader's ability to resolve elementary
+//! flow → flow-property → unit-group chains at 20k breadth on EF 3.1
+//! data, not our handling of multi-process ILCD ingest on EF 3.1
+//! (which remains unproven at Week 5 close — N=1).
+//!
+//! **Claims this run supports:**
+//! - `arko-io-ilcd` parses plain ILCD (EF 3.1 Process v1.1 schema)
+//!   cleanly, not only the ILCD+EPD v1.2 superset used by ÖKOBAUDAT.
+//!   The "is the reader secretly tuned to ÖKOBAUDAT idioms"
+//!   hypothesis is falsified.
+//! - The bridge (`arko-io-ilcd-linker`) resolves 20k+ elementary
+//!   flows on JRC-blessed content with zero engine error.
+//! - Zero data gaps at this N, consistent with the opening
+//!   expectation that EF is cleaner than ÖKOBAUDAT (which ran at
+//!   3.4% publisher-side gaps on 3,075 processes).
+//!
+//! **Claims this run does *not* yet support:**
+//! - Reader robustness on broader EF 3.1 content at scale (N=1 is
+//!   too narrow).
+//! - End-to-end calculation correctness on EF 3.1 data (no
+//!   calculation performed; methods layer deferred to Week 6).
+//! - Multi-process ILCD ingest on EF (one LCI-result node is not an
+//!   ingest graph).
+//!
+//! Bundle is not redistributed; the smoke runs against a
+//! maintainer-downloaded export (same posture as the ÖKOBAUDAT
+//! smoke). To reproduce, export `background_processes` from the EC
+//! EF node and point `EF_REFERENCE_BUNDLE` at the unpacked `ILCD/`
+//! subdirectory.
+//!
+//! The test function is historically named `ef_reference_full_bundle_smoke`
+//! following the `oekobaudat_full_bundle_smoke` pattern; at Week 5
+//! the "full bundle" aspiration is N=1. Rename deferred to whenever
+//! a multi-process EF bundle is assembled (steps b/c in the Week 5
+//! plan — 94k-flow resolver-only smoke on the separate reference
+//! package, and a larger-N process export if the EC node permits).
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
