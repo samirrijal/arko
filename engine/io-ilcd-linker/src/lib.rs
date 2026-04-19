@@ -45,6 +45,7 @@
 //! staleness.
 
 pub mod bundle;
+pub mod column;
 pub mod error;
 pub mod flow;
 pub mod flowproperty;
@@ -53,8 +54,11 @@ pub mod unitgroup;
 mod xml;
 
 pub use bundle::DirectoryBundle;
+pub use column::{build_typed_column, TypedColumn, TypedExchange};
 pub use error::LinkError;
 pub use flow::{Flow, FlowPropertyRef, FlowType};
 pub use flowproperty::FlowProperty;
-pub use resolver::{resolve_reference_unit, LinkResolver, ReferenceUnit};
+pub use resolver::{
+    resolve_reference_unit, resolve_reference_unit_from_flow, LinkResolver, ReferenceUnit,
+};
 pub use unitgroup::{Unit, UnitGroup};

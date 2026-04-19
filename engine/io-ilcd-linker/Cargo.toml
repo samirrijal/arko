@@ -16,3 +16,4 @@ workspace = true
 thiserror.workspace = true
 serde = { workspace = true }
 roxmltree = "0.20"
+arko-io-ilcd.workspace = true

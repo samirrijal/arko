@@ -62,6 +62,45 @@ amount reported in?").
   from the Execution Guide ("tests against a small synthetic ILCD
   bundle you construct manually").
 
+### Added — `arko-io-ilcd-linker` bridge (Phase 1, Week 3-4)
+
+Closes the gap between `arko-io-ilcd` (single-process XML reader) and
+the matrix-assembly code downstream: one call turns a `ProcessDataset`
+into a column where every exchange carries its flow's resolved
+reference unit and flow type.
+
+- `build_typed_column(&ProcessDataset, &impl LinkResolver)
+  -> Result<TypedColumn, LinkError>` — walks every exchange, resolves
+  each flow + its reference-unit chain, and packs the result.
+- `TypedExchange { data_set_internal_id, direction, flow_uuid,
+  flow_name, flow_type, amount, reference_unit, is_reference_flow }`
+  — one row per exchange, with everything a column-builder needs to
+  decide A-vs-B placement and keep units dimensionally honest.
+- `TypedColumn { process_uuid, process_name,
+  reference_exchange_internal_id, exchanges }` — the column-builder-
+  ready shape.
+- `resolve_reference_unit_from_flow(resolver, &Flow)` — extracted
+  helper so the bridge can reuse an already-loaded `Flow` without a
+  duplicate file read. `resolve_reference_unit(resolver, uuid)` now
+  delegates to it.
+- `arko-io-ilcd` added as a dependency of `arko-io-ilcd-linker`. The
+  bridge is the intended coupling point; future caller crates depend
+  on `arko-io-ilcd-linker` and inherit `arko-io-ilcd` transitively.
+- Amount semantics at v0.1: `resultingAmount` is passed through
+  unchanged and labelled with the resolved reference unit. Multi-
+  flow-property unit math (mass ↔ energy for a fuel) is deferred —
+  lives in `arko-units`, hooks in later.
+- Fail-fast: first unresolvable exchange surfaces the underlying
+  `LinkError`. Per-exchange error collection for whole-bundle scans
+  is a caller concern.
+- **Tests**: two new integration tests against the minimal bundle
+  plus a hand-built `processDataSet` fixture
+  (`processes/00000000-0000-0000-0000-000000000500.xml`) — one happy
+  path (CO2 output, direction + flow type + amount + unit assertions,
+  `is_reference_flow == true`), one dangling-flow-ref path (confirms
+  `LinkError::Io` bubble-up when the exchange's flow isn't in the
+  bundle).
+
 ### Deferred from this crate (→ v0.2)
 
 - Source and Contact datasets (pure provenance; off the unit-

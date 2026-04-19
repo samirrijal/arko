@@ -42,6 +42,16 @@ pub fn resolve_reference_unit<R: LinkResolver + ?Sized>(
     flow_uuid: &str,
 ) -> Result<ReferenceUnit, LinkError> {
     let flow = resolver.resolve_flow(flow_uuid)?;
+    resolve_reference_unit_from_flow(resolver, &flow)
+}
+
+/// Chain walk starting from an already-resolved `Flow`. Lets bridge
+/// code (e.g. `build_typed_column`) that already loaded a flow avoid a
+/// duplicate file read.
+pub fn resolve_reference_unit_from_flow<R: LinkResolver + ?Sized>(
+    resolver: &R,
+    flow: &Flow,
+) -> Result<ReferenceUnit, LinkError> {
     let ref_fp_ref =
         flow.reference_flow_property()
             .ok_or_else(|| LinkError::MissingInternalId {

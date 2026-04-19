@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<processDataSet xmlns="http://lca.jrc.it/ILCD/Process" xmlns:common="http://lca.jrc.it/ILCD/Common" version="1.1">
+  <processInformation>
+    <dataSetInformation>
+      <common:UUID>00000000-0000-0000-0000-000000000500</common:UUID>
+      <name>
+        <baseName xml:lang="en">Synthetic fossil-CO2 release</baseName>
+      </name>
+    </dataSetInformation>
+    <quantitativeReference>
+      <referenceToReferenceFlow>0</referenceToReferenceFlow>
+    </quantitativeReference>
+  </processInformation>
+  <exchanges>
+    <exchange dataSetInternalID="0">
+      <referenceToFlowDataSet refObjectId="00000000-0000-0000-0000-000000000001" type="flow data set" uri="../flows/00000000-0000-0000-0000-000000000001.xml">
+        <common:shortDescription xml:lang="en">Carbon dioxide, fossil</common:shortDescription>
+      </referenceToFlowDataSet>
+      <exchangeDirection>Output</exchangeDirection>
+      <meanAmount>1.0</meanAmount>
+      <resultingAmount>1.0</resultingAmount>
+    </exchange>
+  </exchanges>
+</processDataSet>
