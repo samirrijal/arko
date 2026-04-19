@@ -12,11 +12,13 @@ releases track the spec version they implement.
 Weekend-of-2026-04-19 research while preparing the Week 5 generalisation
 test revealed that `D-0005`'s "three free databases" slate conflated
 two structurally different kinds of free: **foreground-free** bundles
-(ÖKOBAUDAT, EF reference — distributed as standalone ILCD XML under a
-permissive license, readable by us directly) and
-**background-ecoinvent-dependent** bundles (Agribalyse full LCIs —
-consumable only through SimaPro / Brightway / openLCA with a licensed
-ecoinvent background). `D-0010` documents the refinement:
+(ÖKOBAUDAT, the **EF reference package infrastructure** — flows,
+flow properties, unit groups, LCIA methods; distributed as standalone
+ILCD XML under EC Decision 2011/833/EU reuse terms, readable by us
+directly) and **background-ecoinvent-dependent** bundles (Agribalyse
+full LCIs — consumable only through SimaPro / Brightway / openLCA
+with a licensed ecoinvent background). `D-0010` documents the
+refinement:
 
 - **Agribalyse removed from the V1 runtime-ingestible slate.** The
   ADEME DATAVERSE drop is pre-computed EF 3.1 impact results in Excel,
@@ -25,14 +27,20 @@ ecoinvent background). `D-0010` documents the refinement:
   but not importable by `arko-io-ilcd`. The
   `engine/io-ilcd-linker/tests/agribalyse_smoke.rs` stub is removed in
   this commit; nothing references it.
-- **EF reference is now the primary Week 5 generalisation target.**
-  Module docstring of `ef_reference_smoke.rs` updated accordingly.
-- **Third foreground-free database TBD.** ProBas (Umweltbundesamt) is
-  the current candidate to evaluate after EF is green.
+- **EF reference package infrastructure is now the primary Week 5
+  generalisation target.** Module docstring of `ef_reference_smoke.rs`
+  updated accordingly.
+- **Third foreground-free database TBD.** ProBas (Umweltbundesamt)
+  and USDA LCA Commons are the two current candidates; both require
+  a primary-source license check before reader work begins — same
+  discipline as `D-0012`.
 
 `D-0005`'s "no ecoinvent in V1" commitment is preserved; `D-0010`
 sharpens the working definition of what "free" means for that
-commitment.
+commitment; `D-0012` (landed same-day) further sharpens it by
+splitting the EF reference package (infrastructure, permissive) from
+the EF 3.1 LCI datasets (background processes, restrictive
+per-licensor EULAs — not V1-eligible).
 
 ### Observed — EF 3.1 reader-level generalisation smoke (Phase 1, Week 5)
 
@@ -73,6 +81,15 @@ Bundle is not redistributed (same posture as the ÖKOBAUDAT smoke —
 maintainer-downloaded, `#[ignore]`-gated, no fixture committed).
 Reproducible by anyone who exports the same stock from the EC EF node
 and points `EF_REFERENCE_BUNDLE` at the unpacked `ILCD/` subdirectory.
+
+**License posture.** This bundle is the **Sphera-hosted EF 3.1 LCI
+datasets** (background processes), not the JRC-published EF reference
+package infrastructure. The LCI datasets are governed by the Sphera
+EULA (restrictive; see `D-0012` and
+[`docs/licenses/jrc-ef.md`](../docs/licenses/jrc-ef.md)) — not a
+permissive open-data license. Use here is internal
+engineering-smoke-only: maintainer-downloaded, no redistribution,
+no product path.
 
 Next steps tracked: (b) 94k-flow resolver-only smoke on the separate
 JRC EF reference package bundle for broader-than-ÖKOBAUDAT flow-parse
@@ -122,6 +139,13 @@ Bundle is not redistributed (same posture as the single-process
 smoke). Reproducible by downloading the EF reference package 3.x
 zip from EPLCA and pointing `EF_REFERENCE_PACKAGE_BUNDLE` at the
 unpacked `ILCD/` subdirectory.
+
+**License posture.** This bundle is the **EF reference package
+infrastructure** published by JRC — flows, flow properties, unit
+groups, LCIA methods only. Reusable under EC Decision 2011/833/EU
+with attribution (CC-BY 4.0 equivalent). This is the permissive
+side of the EF artefact split formalised in `D-0012`; V1-eligible
+per that decision.
 
 ### Observed — first end-to-end calc smoke on real EF data (Phase 1, Week 5)
 
@@ -201,6 +225,13 @@ work — not a drive-by patch inside this smoke.
 Bundle is not redistributed; same posture as the prior two EF
 entries. Reproducible by setting `EF_REFERENCE_BUNDLE` and running
 the test under `--ignored --nocapture`.
+
+**License posture.** Same as the reader-level generalisation entry
+above: carpet process is from the Sphera-hosted EF 3.1 LCI datasets,
+not the permissive JRC reference package infrastructure. The impact
+numbers in the result table are internal evidence, not a published
+or redistributable dataset. See `D-0012` and
+[`docs/licenses/jrc-ef.md`](../docs/licenses/jrc-ef.md).
 
 ### Added — `FlowOrigin` parsing in `arko-io-ilcd-linker` (Phase 1, Week 5)
 
