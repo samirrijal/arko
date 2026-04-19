@@ -202,6 +202,83 @@ Bundle is not redistributed; same posture as the prior two EF
 entries. Reproducible by setting `EF_REFERENCE_BUNDLE` and running
 the test under `--ignored --nocapture`.
 
+### Added — `FlowOrigin` parsing in `arko-io-ilcd-linker` (Phase 1, Week 5)
+
+Closes the FlowOrigin gap surfaced and quantified by the prior
+end-to-end calc smoke (~7.5% of total impact under AR6 GWP100 on
+the carpet LCI result).
+
+The publisher-side observation that drove the design: JRC EF /
+ÖKOBAUDAT / ILCD-network publishers encode origin in the flow
+`<baseName>` as a trailing parenthetical:
+
+- `methane (fossil)` → `Fossil`
+- `methane (biogenic)` → `NonFossil`
+- `methane (land use change)` → `NonFossil`
+  (LULUC is treated as non-fossil per the carbon-cycle convention)
+
+Implementation:
+
+- New `FlowOrigin` enum in `arko-io-ilcd-linker::flow`, parallel to
+  `arko_core::meta::FlowOrigin`. Variants: `Fossil`, `NonFossil`,
+  `Unspecified` (default). The mirror is deliberate — the linker is
+  a reader/bridge layer and does **not** depend on the engine-side
+  meta types; callers that produce `FlowMeta` from a linker `Flow`
+  translate at the boundary.
+- `classify_flow_origin(base_name)` parses the trailing
+  parenthetical, case-insensitively. Recognised tags: `fossil`
+  (→ `Fossil`); `biogenic`, `non-fossil`, `land use change`,
+  `short cycle`, `from soil or biomass stocks` (→ `NonFossil`).
+  Anything else falls through to `Unspecified` rather than guessing
+  — matching AR6's policy of surfacing missing information rather
+  than silently characterizing under the wrong factor.
+- 7 unit tests cover all observed patterns plus edge cases:
+  case-insensitivity inside the parens, whitespace trimming,
+  unrecognised tags falling through, non-trailing parentheticals
+  being ignored, last-trailing-parenthetical-wins.
+- `Flow.origin` and `TypedExchange.origin` plumbed end-to-end so
+  bridge code receives the classification without re-parsing.
+
+### Observed — AR6 fossil/non-fossil split closes the carpet smoke gap (Phase 1, Week 5)
+
+Re-running `ef_carpet_calc_smoke` after the FlowOrigin parser
+landed gave the result the prior entry's analysis predicted, on
+the nose.
+
+|                                 |   before |    after |
+|---------------------------------|---------:|---------:|
+| AR6 nonzeros                    |       35 |   **44** |
+| AR6 impact (kg CO2-eq / m²)     |  8.45270 | **9.18024** |
+| AR5 impact (kg CO2-eq / m²)     |  9.14379 |  9.14379 |
+| AR6 vs AR5 delta                | 0.691 kg | **0.036 kg** |
+| AR6 vs AR5 relative             |     7.5% |  **0.4%** |
+
+The previously-missing 9 cells are picked up; AR6 nonzeros now
+match AR5's. AR6 impact closes most of the gap to AR5, leaving
+a 0.036 kg CO2-eq / m² residual that is the **real** methodology
+delta — IPCC AR6 splits fossil CH4 (29.8) from biogenic (27.0) on
+physical grounds (biogenic CH4 eventually returns to CO2 via the
+contemporary carbon cycle); AR5's flat 28.0 averages over that.
+The remaining AR6 vs AR5 disagreement is no longer a wiring
+artifact; it is the methodology.
+
+Origin tagging on this 20,288-flow inventory: **16 fossil, 15
+non-fossil, 20,257 unspecified**. The parser caught more than just
+the 9 CH4 flows — fossil/biogenic CO2, CO, and other origin-split
+species in the EF inventory all classified correctly. Defensive
+synonym coverage pays off.
+
+Wall-clock note: typed-column build dropped from 102.8 s to 3.4 s
+on this re-run. Not a performance change — the 2,443 distinct flow
+XMLs are warm in the OS page cache from the prior run. This is
+also why engine-layer caching is still deferred per `LinkResolver`
+policy; the OS does most of the work for typical workloads.
+
+What this still does **not** support: methodology validation on
+this dataset (no published reference; sign convention still
+verbatim); calc correctness across the wider EF process catalogue
+(N=1 process); multi-process LU on EF.
+
 ### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
 
 First crate of Phase 1. Resolves the cross-document refs that
