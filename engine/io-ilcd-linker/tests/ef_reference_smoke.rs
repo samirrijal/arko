@@ -6,16 +6,23 @@
 //! The EF reference packages are the JRC's blessed background data
 //! for PEF (Product Environmental Footprint) and EN 15804+A2
 //! downstream data. Every European compliance story eventually names
-//! them. If our ILCD reader passes ÖKOBAUDAT and Agribalyse but trips
-//! on EF, we have a problem — EF is closer to the canonical ILCD
-//! spec than either of the other two.
+//! them. If our ILCD reader passes ÖKOBAUDAT but trips on EF, we
+//! have a problem — EF is closer to the canonical ILCD spec than
+//! ÖKOBAUDAT is (EF is plain ILCD; ÖKOBAUDAT is the +EPD v1.2
+//! superset).
 //!
-//! Unlike ÖKOBAUDAT (ILCD+EPD v1.2 superset) and Agribalyse (plain
-//! ILCD, agriculture focus), EF ships LCIA method datasets alongside
-//! the process / flow / unit-group files. At v0.1 we deliberately
-//! ignore `<LCIAMethodDataSet>` (it's the `arko-methods` crate's
-//! concern, not the linker's). This test asserts the **process
-//! pipeline** works on EF; method ingestion lands in Phase 1 Week 6.
+//! After the weekend-of-2026-04-19 clarification (see `D-0010`),
+//! EF reference is the **primary** generalisation target for Week 5:
+//! Agribalyse's full LCIs are background-ecoinvent-dependent and out
+//! of V1 scope, so EF carries the "engine isn't secretly tuned to
+//! ÖKOBAUDAT idioms" proof alone until a foreground-free third
+//! database is validated.
+//!
+//! EF ships LCIA method datasets alongside the process / flow /
+//! unit-group files. At v0.1 we deliberately ignore
+//! `<LCIAMethodDataSet>` (it's the `arko-methods` crate's concern,
+//! not the linker's). This test asserts the **process pipeline**
+//! works on EF; method ingestion lands in Phase 1 Week 6.
 //!
 //! # How to run locally
 //!
@@ -36,16 +43,16 @@
 //!
 //! # What this asserts
 //!
-//! Same invariants as the ÖKOBAUDAT and Agribalyse smokes: every
-//! process parses cleanly, every linkable process pipelines through
+//! Same invariants as the ÖKOBAUDAT smoke: every process parses
+//! cleanly, every linkable process pipelines through
 //! `build_typed_column` with zero engine-level errors, and every
 //! exchange carries a non-empty reference unit. Bundle gaps
 //! (missing XML cross-refs) are tolerated.
 //!
-//! Expectation: EF reference package is the cleanest of the three
-//! (it's the spec-author's own bundle). A non-trivial gap count
-//! here, or any engine failure, almost certainly indicates a real
-//! reader bug rather than a publisher issue.
+//! Expectation: EF reference package should be the cleanest of the
+//! open-EU bundles we test — it's the spec-author's own. A non-trivial
+//! gap count here, or any engine failure, almost certainly indicates
+//! a real reader bug rather than a publisher issue.
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;

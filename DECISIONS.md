@@ -9,6 +9,177 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-19 · `D-0011` — KarbonGarbi paused; Arko is the primary Goibix product; pause trigger retired
+
+**Context:** `D-0006` framed Arko as a first-class product but preserved a
+pause trigger ("if KarbonGarbi has <2 paying customers by 2026-09-30,
+freeze Arko until it has ≥3"), under the assumption that KarbonGarbi was
+the near-term revenue engine funding Arko's 14-month build. Imanol's
+2026-04-19 feedback on KarbonGarbi exposed that the current positioning
+isn't commercially viable without an ESG-expansion pivot — itself a
+significant future project. The user considered and confirmed (not in
+the moment, overnight and under direct pushback) that the right move is
+to invert: KarbonGarbi goes into graceful suspension, Arko becomes the
+primary Goibix product.
+
+**Decision:**
+
+1. **KarbonGarbi enters graceful suspension.** 13 phases complete, no
+   new feature development, no active sales push. Code archived/
+   documented; the option to resume as "KarbonGarbi ESG" is preserved
+   but not scheduled. No KarbonGarbi work — features, refactors, GTM —
+   unless the user explicitly re-opens the project.
+2. **Arko is the primary Goibix product.** Customer development,
+   marketing, revenue path, and brand weight all move to Arko. The
+   first Arko paying customer (~Month 12–14 of the execution guide) is
+   also Goibix's first revenue. Runway shifts from "KarbonGarbi MRR
+   funds Arko" to "day job + savings carry Arko to first customer."
+3. **Pause trigger retired.** The `D-0006` reversal condition ("if
+   KarbonGarbi <2 paying by 2026-09-30, freeze Arko until ≥3") no
+   longer applies. It was constructed for a parallel-tracks world that
+   no longer exists.
+4. **Weekly split retired.** The Mon–Wed Arko / Thu–Fri KarbonGarbi
+   rhythm in the execution guide is obsolete. All working sessions go
+   to Arko.
+5. **Definition of done revised.** The 14-month target collapses to
+   "Arko ≥1 paying customer (€149+ MRR); calc spec cited externally;
+   not working 60+ hr weeks; Imanol still a friend." The KarbonGarbi
+   MRR clause is removed.
+6. **GTM track pulled forward.** Marketing / customer-development was
+   nominally deferred to Phase 5 (~Month 10+). With Arko as primary
+   product it starts now: register `arko.earth` and `arko.eus` this
+   month; reserve `@arko` handles on X / LinkedIn / Bluesky / GitHub
+   next month; stand up a one-page "Arko: open LCA engine, private
+   beta Q3 2026, email to be notified" site in Month 3; begin a
+   ~monthly technical-decisions blog cadence from Month 4
+   ("Why we wrote our own LCA calculation engine"; "Understanding EF
+   3.1"; "The ecoinvent licensing landscape and why it matters for
+   open LCA"). This is Sunday writing time, not development time.
+7. **Imanol relationship reframed.** Imanol's feedback on KarbonGarbi
+   is honored, not discarded. His role for Arko remains informal
+   LCA-methodology advisor. A short professional transition note will
+   be sent this week naming the shift explicitly (not oversold, not
+   rushed).
+
+**Rationale:** This is the honest version of the situation, not the
+optimistic one. KarbonGarbi in its current form needs the ESG pivot to
+be commercially viable; that pivot is a major project; running it while
+also building Arko dilutes both. Arko addresses a real disruption
+window — SimaPro's captive market, no viable open alternative — with a
+defensible, differentiated product already partway built (Phase 1 Week
+4 shipped, engine parses real data). Betting on Arko is a real bet and
+not without risk; but so was KarbonGarbi, and the Imanol data point
+showed the edge of that bet. Arko is defensible; the open-EU-database
+licensing path is being navigated properly (`D-0005`, `D-0010`); the
+engine is real. The content / search-footprint compounding effect of
+starting the GTM track 10 months earlier than originally planned is
+material.
+
+**Alternatives rejected:**
+- *Pivot KarbonGarbi to ESG in-flight:* the ESG expansion is itself a
+  significant project; attempting it while also building Arko produces
+  two half-finished products instead of one finished one.
+- *Keep KarbonGarbi in active sales mode without feature work:* would
+  dribble attention without producing either revenue or credibility.
+  Graceful suspension is the cleaner stance.
+- *Do both on a stricter calendar split:* tried already (`D-0006`);
+  the Imanol feedback invalidated the economic premise, not the
+  scheduling one.
+
+**Reversal condition:** If at any point in the next ~3 months the user
+judges that KarbonGarbi needed the ESG pivot *sooner* rather than
+later, treat that as a legitimate revisit. A new entry would document
+the re-opening and what changed.
+
+**Scope notes:**
+- Phase 1 Week 5 technical work (EF reference package ingestion, ILCD
+  reader generalisation) is unchanged by this decision.
+- `docs/arko-execution-guide.md` is the canonical roadmap; this entry
+  supersedes the pause-trigger and weekly-split sections of it.
+
+---
+
+## 2026-04-19 · `D-0010` — V1 database slate refined: foreground-free vs background-ecoinvent-dependent
+
+**Context:** `D-0005` named **ÖKOBAUDAT, Agribalyse, and the EF
+reference package** as the three open EU databases shipping in V1.
+Weekend research (2026-04-19) while preparing Phase 1 Week 5's
+generalisation test revealed that this slate conflates two
+structurally different kinds of "free" database:
+
+- **Foreground-free:** the publisher distributes the LCI bundle itself
+  as downloadable ILCD / native XML, standalone, under a permissive
+  license. Consuming it requires only the reader. **ÖKOBAUDAT** and
+  the **JRC EF reference package** fit this definition.
+- **Background-ecoinvent-dependent:** the publisher distributes
+  *foreground* modelling but the only way to consume the full LCIs is
+  through a tool (SimaPro, Brightway, openLCA) that bundles **ecoinvent**
+  as the background system. The "database" is really a foreground
+  layer that only produces sensible results when paired with a
+  licensed ecoinvent background. **Agribalyse full LCIs** fit this
+  definition. The ADEME-hosted DATAVERSE drop
+  (`AGRIBALYSE3.2_Tableur...xlsx`) is **pre-computed EF 3.1 impact
+  results**, not ILCD inventory — useful as a published reference
+  corpus for `arko-differential`, but not something the reader can
+  ingest.
+
+**Decision:** Refine `D-0005`'s three-database slate to:
+
+1. **ÖKOBAUDAT** (foreground-free; ILCD+EPD v1.2; construction
+   sector). Primary. Pipeline smoke 2,970 / 3,075 clean at
+   Phase 1 Week 4.
+2. **EF reference package** (foreground-free; ILCD; closest to
+   canonical spec; cross-sector). Primary generalisation test target
+   for Week 5.
+3. **A third foreground-free database, TBD.** The original plan named
+   Agribalyse; that slot is now open. **ProBas** (Umweltbundesamt,
+   German federal) is the current candidate to evaluate. The "three
+   free databases" exit criterion in `D-0005` stands, but the
+   identity of the third is deferred until a foreground-free
+   candidate is validated.
+
+Agribalyse is **not dropped from the ecosystem**, only from V1 as a
+runtime-ingestible source: the DATAVERSE impact-results Excel is a
+legitimate Phase 1 Week 8–10 asset for the `arko-differential` §14
+conformance corpus (~2,500 published reference values,
+CC-BY-4.0 Etalab 2.0). That use case is background-ecoinvent-agnostic
+because it compares published totals against our computed totals, not
+our LCI import against theirs.
+
+**Rationale:** The distinction matters because `D-0005`'s commitment
+was "no ecoinvent in V1." A database whose only consumable LCI path
+runs through ecoinvent-bundled tools *is* ecoinvent-in-V1 in all but
+name. Keeping Agribalyse in the V1 slate would either quietly violate
+`D-0005` or silently ship a broken import path. Naming the two kinds
+of "free" separately lets the open-EU-database claim stay honest
+without shrinking the ecosystem footprint.
+
+**Alternatives rejected:**
+- *Keep Agribalyse on the V1 list and accept the ecoinvent
+  dependency quietly:* violates `D-0005` and the open positioning
+  narrative. Non-starter.
+- *Drop the "three free databases" target entirely:* overcorrects.
+  Two is a workable generalisation signal but three is meaningfully
+  stronger; the target should stand, only the third name is deferred.
+- *Carve out an ecoinvent-dependent path "for testing only":* silent
+  coupling of the test rig to a commercial license is a licensing
+  time-bomb. No.
+
+**Reversal condition:** If ADEME or a successor publishes a genuinely
+ecoinvent-independent Agribalyse LCI distribution, reopen this
+entry and consider re-adding Agribalyse to the V1 slate. Until then,
+`arko-io-ilcd` does not carry an Agribalyse code path.
+
+**Scope notes:**
+- The Phase 1 Week 5 smoke-test stub at
+  `engine/io-ilcd-linker/tests/agribalyse_smoke.rs` is removed in the
+  same commit as this entry. `ef_reference_smoke.rs` remains as the
+  primary generalisation signal for Week 5.
+- The DATAVERSE drop (`C:\Users\hical\Downloads\dataverse_files`) is
+  retained locally for Phase 1 Week 8–10 conformance-corpus use.
+
+---
+
 ## 2026-04-19 · `D-0009` — ILCD+EPD v1.2 support: stage-stratified, inline-unit-priority, warn-don't-silently-default
 
 **Context:** Phase 1 Week 4's first real-data checkpoint fed a full

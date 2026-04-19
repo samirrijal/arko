@@ -7,6 +7,33 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Changed — V1 open-EU-database slate refined (Phase 1, Week 5)
+
+Weekend-of-2026-04-19 research while preparing the Week 5 generalisation
+test revealed that `D-0005`'s "three free databases" slate conflated
+two structurally different kinds of free: **foreground-free** bundles
+(ÖKOBAUDAT, EF reference — distributed as standalone ILCD XML under a
+permissive license, readable by us directly) and
+**background-ecoinvent-dependent** bundles (Agribalyse full LCIs —
+consumable only through SimaPro / Brightway / openLCA with a licensed
+ecoinvent background). `D-0010` documents the refinement:
+
+- **Agribalyse removed from the V1 runtime-ingestible slate.** The
+  ADEME DATAVERSE drop is pre-computed EF 3.1 impact results in Excel,
+  not ILCD inventory — useful as a reference corpus for
+  `arko-differential` §14 (~2,500 published values, CC-BY-4.0 Etalab)
+  but not importable by `arko-io-ilcd`. The
+  `engine/io-ilcd-linker/tests/agribalyse_smoke.rs` stub is removed in
+  this commit; nothing references it.
+- **EF reference is now the primary Week 5 generalisation target.**
+  Module docstring of `ef_reference_smoke.rs` updated accordingly.
+- **Third foreground-free database TBD.** ProBas (Umweltbundesamt) is
+  the current candidate to evaluate after EF is green.
+
+`D-0005`'s "no ecoinvent in V1" commitment is preserved; `D-0010`
+sharpens the working definition of what "free" means for that
+commitment.
+
 ### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
 
 First crate of Phase 1. Resolves the cross-document refs that
