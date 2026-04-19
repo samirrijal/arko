@@ -11,6 +11,12 @@ bullet. Keep entries short; link out to the richer record.
 
 ---
 
+- **2026-04-19** · Bit-exact parity on EF carpet smoke against an
+  independent Python reference — 0.000e0 deviation, `CrossImpl`
+  tolerance, **PASS**. First external-witness parity evidence on real
+  JRC EF data (process `972cd3cd`), via
+  [`engine/io-ilcd-linker/tests/ef_carpet_parity_smoke.rs`](engine/io-ilcd-linker/tests/ef_carpet_parity_smoke.rs).
+  Commit [`aa59407`](https://github.com/samirrijal/arko/commit/aa59407).
 - **2026-04-19** · `arko-engine v0.0.1` published — first public,
   tagged, citable, pre-alpha release of the Arko calculation engine.
   Release page:
