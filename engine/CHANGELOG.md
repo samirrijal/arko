@@ -80,6 +80,49 @@ evidence; (c) larger-N process export from the EC EF node (or from
 a free EF-compliant node per `D-0010`) for multi-process ingest
 evidence.
 
+### Observed — 94k-flow resolver smoke on JRC EF reference package (Phase 1, Week 5, step b)
+
+Step (b) from the prior entry, landed the same day. The smoke harness
+at
+[`engine/io-ilcd-linker/tests/ef_reference_package_resolver_smoke.rs`](io-ilcd-linker/tests/ef_reference_package_resolver_smoke.rs)
+was run against the JRC EF reference package 3.1 downloaded from
+EPLCA under *Developer - Environmental Footprint* — the
+infrastructure-only bundle (flows, flowproperties, unitgroups,
+lciamethods, sources, contacts; zero processes by construction).
+
+Bundle contents: **94,062 elementary-flow XML files**. Result:
+94,062 / 94,062 flows parsed; 94,062 fully resolved through the
+`flow → flowproperty → unitgroup → reference unit` chain;
+0 publisher gaps; 0 engine failures. Flow-type distribution:
+Elementary 93,993 / Waste 68 / Product 1. Complete reference-unit
+set (8 distinct units): `kg` 92,802; `kBq` 964; `m²` 150; `m²·a` 76;
+`MJ` 34; `m³` 29; `kg·a` 6; `m³·a` 1. Runtime 821 s on the maintainer
+Windows laptop (debug build, with a test-local `CachingResolver`
+wrapping the otherwise cache-less `DirectoryBundle`).
+
+What this supports, beyond the prior entry: reader-level breadth
+scales from ÖKOBAUDAT's few-thousand flows to ~94k on JRC-curated
+content, with zero publisher-side cross-reference gaps — consistent
+with the opening expectation that EF reference is cleaner than
+ÖKOBAUDAT (which ran at 3.4% gaps on 3,075 processes).
+
+What this does **not** add: anything about multi-process ingest on
+EF (this bundle ships no processes — the N=1 single-process
+characterisation from the prior entry remains the only process-level
+EF evidence); anything about end-to-end calculation correctness (no
+calc performed; methods layer still Week 6).
+
+**Engine caching policy unchanged.** The cache lives in the test
+file only, not in `DirectoryBundle`. `LinkResolver`'s cache-deferral
+policy is still waiting for a production workload to name the shape
+of caching it wants; this smoke being a test-suite artifact, not a
+user workload, doesn't constitute that evidence.
+
+Bundle is not redistributed (same posture as the single-process
+smoke). Reproducible by downloading the EF reference package 3.x
+zip from EPLCA and pointing `EF_REFERENCE_PACKAGE_BUNDLE` at the
+unpacked `ILCD/` subdirectory.
+
 ### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
 
 First crate of Phase 1. Resolves the cross-document refs that
