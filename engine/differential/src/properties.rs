@@ -327,7 +327,7 @@ fn block_diagonal(s1: &Study, s2: &Study) -> Result<Study, String> {
             a_triplets.push((row + n1, col + n1, v));
         }
     }
-    a_triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    a_triplets.sort_by_key(|a| (a.0, a.1));
     let mut a_tri = TriMat::new((n1 + n2, n1 + n2));
     for (i, j, v) in a_triplets {
         a_tri.add_triplet(i, j, v);
@@ -346,7 +346,7 @@ fn block_diagonal(s1: &Study, s2: &Study) -> Result<Study, String> {
             b_triplets.push((row + m1, col + n1, v));
         }
     }
-    b_triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    b_triplets.sort_by_key(|a| (a.0, a.1));
     let mut b_tri = TriMat::new((m1 + m2, n1 + n2));
     for (i, j, v) in b_triplets {
         b_tri.add_triplet(i, j, v);
@@ -367,7 +367,7 @@ fn block_diagonal(s1: &Study, s2: &Study) -> Result<Study, String> {
             c_triplets.push((row, col + m1, v));
         }
     }
-    c_triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    c_triplets.sort_by_key(|a| (a.0, a.1));
     let mut c_tri = TriMat::new((k1, m1 + m2));
     for (i, j, v) in c_triplets {
         c_tri.add_triplet(i, j, v);
@@ -456,7 +456,7 @@ fn add_rank_1_dense(a: &SparseMatrix, u: &[f64], v: &[f64]) -> SparseMatrix {
             triplets.push((i, j, ui * vj));
         }
     }
-    triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    triplets.sort_by_key(|a| (a.0, a.1));
 
     let mut tri = TriMat::new((rows, cols));
     for (i, j, val) in triplets {

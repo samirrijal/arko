@@ -15,7 +15,7 @@ use crate::{
 /// A direct-method linear solver for the technosphere system `A · s = f`.
 ///
 /// Per spec §6.3, the primary solve **MUST** be a direct sparse (or dense,
-/// for small `n`) method. Iterative solvers (GMRES, BiCGStab) are permitted
+/// for small `n`) method. Iterative solvers (`GMRES`, `BiCGStab`) are permitted
 /// as fallbacks but **MUST** declare convergence tolerance through the
 /// `config()` hook so provenance records are complete (§12).
 pub trait Solver {

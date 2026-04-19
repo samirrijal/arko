@@ -58,8 +58,8 @@ impl FactoredSystem {
         let coeff = vs / m;
 
         // s_new = s - coeff·x
-        for i in 0..n {
-            self.scaling[i] -= coeff * x[i];
+        for (i, &x_i) in x.iter().enumerate().take(n) {
+            self.scaling[i] -= coeff * x_i;
         }
 
         // A_new = A + u·v^T  (sparse rebuild, deterministic triplet order)
@@ -306,7 +306,7 @@ fn add_rank_r_to_sparse(a: &SparseMatrix, u: &[&[f64]], v: &[&[f64]]) -> SparseM
         }
     }
 
-    triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    triplets.sort_by_key(|a| (a.0, a.1));
 
     let mut tri = TriMat::new((rows, cols));
     for (i, j, val) in triplets {

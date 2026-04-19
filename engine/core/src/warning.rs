@@ -62,6 +62,7 @@ impl Warning {
         }
     }
 
+    #[must_use]
     pub fn with_value(mut self, value: f64) -> Self {
         self.value = Some(value);
         self

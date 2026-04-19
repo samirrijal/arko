@@ -99,71 +99,39 @@ pub fn ipcc_ar5_gwp100() -> ImpactMethod {
 /// - HFC-134a: `1_530`. HFC-23: `14_600`. HFC-32: `771`.
 /// - CF4 (PFC-14): `7_380`. C2F6 (PFC-116): `12_400`.
 fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
-    let mut factors = Vec::new();
-
-    // CO2 — reference.
-    factors.push(cas_factor(
-        "124-38-9",
-        1.0,
-        "Carbon dioxide (CO2), AR6 reference",
-    ));
-
-    // CH4 — split by origin. Order matters for the tests that read
-    // factors[1] / factors[2]; keep fossil before non-fossil.
-    factors.push(cas_origin_factor(
-        "74-82-8",
-        FlowOrigin::Fossil,
-        29.8,
-        "Methane (CH4), fossil — AR6 WG1 Ch7 T7.15",
-    ));
-    factors.push(cas_origin_factor(
-        "74-82-8",
-        FlowOrigin::NonFossil,
-        27.0,
-        "Methane (CH4), non-fossil — AR6 WG1 Ch7 T7.15",
-    ));
-
-    // N2O — single value, no origin split in AR6.
-    factors.push(cas_factor(
-        "10024-97-2",
-        273.0,
-        "Nitrous oxide (N2O) — AR6 WG1 Ch7 T7.15",
-    ));
-
-    // Fluorinated gases.
-    factors.push(cas_factor(
-        "2551-62-4",
-        25_200.0,
-        "Sulfur hexafluoride (SF6)",
-    ));
-    factors.push(cas_factor(
-        "7783-54-2",
-        17_400.0,
-        "Nitrogen trifluoride (NF3)",
-    ));
-
-    // HFCs.
-    factors.push(cas_factor(
-        "811-97-2",
-        1_530.0,
-        "HFC-134a (1,1,1,2-tetrafluoroethane)",
-    ));
-    factors.push(cas_factor("75-46-7", 14_600.0, "HFC-23 (trifluoromethane)"));
-    factors.push(cas_factor("75-10-5", 771.0, "HFC-32 (difluoromethane)"));
-
-    // PFCs.
-    factors.push(cas_factor(
-        "75-73-0",
-        7_380.0,
-        "PFC-14 (tetrafluoromethane, CF4)",
-    ));
-    factors.push(cas_factor(
-        "76-16-4",
-        12_400.0,
-        "PFC-116 (hexafluoroethane, C2F6)",
-    ));
-
-    factors
+    // CH4 order matters for the tests that read factors[1] / factors[2];
+    // keep fossil before non-fossil.
+    vec![
+        cas_factor("124-38-9", 1.0, "Carbon dioxide (CO2), AR6 reference"),
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::Fossil,
+            29.8,
+            "Methane (CH4), fossil — AR6 WG1 Ch7 T7.15",
+        ),
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::NonFossil,
+            27.0,
+            "Methane (CH4), non-fossil — AR6 WG1 Ch7 T7.15",
+        ),
+        cas_factor(
+            "10024-97-2",
+            273.0,
+            "Nitrous oxide (N2O) — AR6 WG1 Ch7 T7.15",
+        ),
+        cas_factor("2551-62-4", 25_200.0, "Sulfur hexafluoride (SF6)"),
+        cas_factor("7783-54-2", 17_400.0, "Nitrogen trifluoride (NF3)"),
+        cas_factor(
+            "811-97-2",
+            1_530.0,
+            "HFC-134a (1,1,1,2-tetrafluoroethane)",
+        ),
+        cas_factor("75-46-7", 14_600.0, "HFC-23 (trifluoromethane)"),
+        cas_factor("75-10-5", 771.0, "HFC-32 (difluoromethane)"),
+        cas_factor("75-73-0", 7_380.0, "PFC-14 (tetrafluoromethane, CF4)"),
+        cas_factor("76-16-4", 12_400.0, "PFC-116 (hexafluoroethane, C2F6)"),
+    ]
 }
 
 /// AR5 Table 8.A.1 subset (GWP100 without climate-carbon feedback).

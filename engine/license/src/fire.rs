@@ -40,8 +40,7 @@ pub struct FiredRule {
 pub fn fire_rules(study: &Study, scaling: &[f64]) -> Vec<FiredRule> {
     let mut fired = Vec::new();
     let n = scaling.len().min(study.processes.len());
-    for j in 0..n {
-        let s_j = scaling[j];
+    for (j, &s_j) in scaling.iter().enumerate().take(n) {
         if s_j.abs() <= EPS_PRESENCE {
             continue;
         }

@@ -63,7 +63,7 @@ enum Token {
 /// unit to a value in the corresponding SI base unit.
 pub fn parse_expression(input: &str) -> Result<ParsedExpression, UnitParseError> {
     // Pre-normalize: middle-dot → '.', collapse whitespace runs.
-    let normalized = input.replace('·', ".").replace('\u{00D7}', ".");
+    let normalized = input.replace(['·', '\u{00D7}'], ".");
     let trimmed = normalized.trim();
     if trimmed.is_empty() {
         return Err(UnitParseError::Empty(input.to_string()));

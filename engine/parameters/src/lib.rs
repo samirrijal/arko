@@ -96,8 +96,7 @@ pub fn evaluate(params: &[Parameter]) -> Result<HashMap<ParameterId, f64>, Engin
         remaining.sort_by(|a, b| a.0.cmp(&b.0));
         let witness = remaining
             .first()
-            .map(|id| id.0.clone())
-            .unwrap_or_else(|| "<unknown>".into());
+            .map_or_else(|| "<unknown>".into(), |id| id.0.clone());
         return Err(EngineError::ParamCycle(witness));
     }
 
@@ -108,9 +107,9 @@ pub fn evaluate(params: &[Parameter]) -> Result<HashMap<ParameterId, f64>, Engin
 /// Public because callers may want to re-evaluate matrix-entry
 /// expressions that share the parameter namespace without redoing the
 /// full DAG walk.
-pub fn eval_expr(
+pub fn eval_expr<S: std::hash::BuildHasher>(
     expr: &Expression,
-    env: &HashMap<ParameterId, f64>,
+    env: &HashMap<ParameterId, f64, S>,
     owner_hint: &ParameterId,
 ) -> Result<f64, EngineError> {
     let v = match expr {
@@ -166,7 +165,7 @@ pub fn walk_deps(expr: &Expression, out: &mut Vec<ParameterId>) {
         }
         Expression::Pow(b, _) => walk_deps(b, out),
         Expression::Abs(e) | Expression::Sqrt(e) | Expression::Log(e) | Expression::Exp(e) => {
-            walk_deps(e, out)
+            walk_deps(e, out);
         }
         Expression::IfPos {
             cond,

@@ -54,7 +54,7 @@ arko-validation = { path = "validation", version = "0.0.1" }
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_debug_implementations = "warn"
-rust_2018_idioms = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
@@ -65,6 +65,16 @@ missing_panics_doc = "allow"
 cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
 cast_precision_loss = "allow"
+cast_lossless = "allow"
+doc_markdown = "allow"
+float_cmp = "allow"
+manual_range_contains = "allow"
+many_single_char_names = "allow"
+similar_names = "allow"
+needless_range_loop = "allow"
+match_wildcard_for_single_variants = "allow"
+default_trait_access = "allow"
+too_many_lines = "allow"
 
 [profile.release]
 opt-level = 3

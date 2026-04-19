@@ -113,7 +113,7 @@ pub fn build_c_matrix(
         });
     }
 
-    triplets.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    triplets.sort_by_key(|a| (a.0, a.1));
     let mut t = TriMat::new((k, m));
     for (i, j, v) in triplets {
         t.add_triplet(i, j, v);

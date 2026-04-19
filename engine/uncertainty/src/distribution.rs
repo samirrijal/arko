@@ -129,7 +129,7 @@ impl Distribution {
                 if !min.is_finite() || !max.is_finite() {
                     return Err(bad("Uniform: parameters must be finite".into()));
                 }
-                if !(min < max) {
+                if min >= max {
                     return Err(bad(format!(
                         "Uniform: require min < max; got min={min}, max={max}"
                     )));
