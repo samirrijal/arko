@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "Arko: an open, verifiable LCA calculation engine"
+message: "If you use Arko in academic work, please cite it as below."
+type: software
+authors:
+  - family-names: Rijal
+    given-names: Samir
+    email: hicalcifer0@gmail.com
+repository-code: "https://github.com/samirrijal/arko"
+abstract: >-
+  Arko is an open-source life-cycle assessment (LCA) calculation engine
+  written in Rust. It implements a frozen mathematical specification
+  (arko-calc v0.1) with a determinism contract (BLAKE3 canonical study
+  hashing, seeded Monte Carlo), a tiered conformance framework, and
+  reference AR5 / AR6 GWP100 method presets with CH4 fossil / non-fossil
+  origin splitting per IPCC WG1 Ch7 T7.15.
+license: Apache-2.0
+version: 0.0.1
+date-released: "2026-04-19"
+keywords:
+  - life-cycle-assessment
+  - LCA
+  - carbon-accounting
+  - environmental-impact
+  - IPCC
+  - reproducible-research

@@ -91,6 +91,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arko-io-ilcd-linker"
+version = "0.0.1"
+dependencies = [
+ "roxmltree",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "arko-license"
 version = "0.0.1"
 dependencies = [

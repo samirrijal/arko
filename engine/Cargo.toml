@@ -5,6 +5,7 @@ members = [
     "differential",
     "io-ecospold2",
     "io-ilcd",
+    "io-ilcd-linker",
     "license",
     "methods",
     "parameters",
@@ -41,6 +42,7 @@ arko-core = { path = "core", version = "0.0.1" }
 arko-differential = { path = "differential", version = "0.0.1" }
 arko-io-ecospold2 = { path = "io-ecospold2", version = "0.0.1" }
 arko-io-ilcd = { path = "io-ilcd", version = "0.0.1" }
+arko-io-ilcd-linker = { path = "io-ilcd-linker", version = "0.0.1" }
 arko-license = { path = "license", version = "0.0.1" }
 arko-methods = { path = "methods", version = "0.0.1" }
 arko-parameters = { path = "parameters", version = "0.0.1" }

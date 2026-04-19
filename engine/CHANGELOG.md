@@ -7,6 +7,74 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — `arko-io-ilcd-linker` 0.0.1 (Phase 1, Week 3)
+
+First crate of Phase 1. Resolves the cross-document refs that
+`arko-io-ilcd` deliberately leaves dangling: `flowDataSet`,
+`flowPropertyDataSet`, `unitGroupDataSet` — just enough of each to walk
+the chain **flow → reference flow property → unit group → reference
+unit**, which is the question every `A`-matrix column-builder needs to
+answer ("given a flow UUID on an ILCD exchange, what unit is its
+amount reported in?").
+
+- `LinkResolver` trait — UUID-keyed lookup over Flow / FlowProperty /
+  UnitGroup. The extension point for future `ZipBundle`, HTTP-backed,
+  or cached resolvers; callers (e.g. future column-builders) depend on
+  the trait, not the concrete backend.
+- `DirectoryBundle` — the v0.1 reference implementation, backed by
+  the standard EU JRC on-disk layout
+  (`processes/<UUID>.xml`, `flows/<UUID>.xml`, `flowproperties/`,
+  `unitgroups/`). Lazy by design: opening a bundle is free, every
+  `resolve_*` re-reads and re-parses the one file it needs. ÖKOBAUDAT
+  has ~1k flows and a calc touches ~50 of them, so caching is deferred
+  to first profiling-driven need rather than designed in.
+- `resolve_reference_unit(resolver, flow_uuid) -> ReferenceUnit` —
+  the one-call chain walker. Returns UUID + name for every link in
+  the chain so callers can attribute a unit without re-walking
+  (useful for error messages and provenance).
+- Typed model: `Flow { uuid, base_name, flow_type, cas,
+  reference_flow_property_id, flow_properties }` with
+  `FlowType::{Elementary, Product, Waste, Other}`;
+  `FlowProperty { uuid, base_name, reference_unit_group_uuid }`;
+  `UnitGroup { uuid, base_name, reference_unit_id, units }`;
+  `Unit { internal_id, name, mean_value }`. `Flow::reference_flow_property()`
+  and `UnitGroup::reference_unit()` are the dangling-ref-safe accessors
+  (return `Option`; the chain walker converts `None` to
+  `LinkError::MissingInternalId`).
+- `LinkError` — `thiserror` enum carrying path context on every
+  variant: `Io`, `Xml`, `UnexpectedRoot`, `MissingElement`,
+  `MissingAttribute`, `InvalidText`, `MissingInternalId`. Diagnostics
+  stay useful across bundles with thousands of datasets.
+- Strict on missing cross-refs; permissive on unknown elements
+  (same posture as `arko-io-ilcd`). `roxmltree`-based, pure-Rust,
+  zero unsafe, default-namespace-transparent (ILCD's dual
+  `default + common:` namespaces parse without per-element prefix
+  tracking).
+- Shared `crate::xml` module — `first_child`, `node_text`, `parse_int`,
+  `parse_f64` (with non-finite rejection). Three parsers, one place for
+  the boilerplate.
+- **Integration tests against a synthetic minimal bundle**
+  (`tests/fixtures/minimal_bundle/`): hand-crafted fossil-CO2 flow →
+  Mass property → Units-of-mass group with `kg` as reference. Five
+  tests cover per-dataset parse, `resolve_reference_unit` end-to-end
+  chain walk, and `Io` error on missing flow file. Every link in the
+  chain exercised with predictable values — the first Week 3 checkpoint
+  from the Execution Guide ("tests against a small synthetic ILCD
+  bundle you construct manually").
+
+### Deferred from this crate (→ v0.2)
+
+- Source and Contact datasets (pure provenance; off the unit-
+  resolution path).
+- LCIA Method datasets (belong in `arko-methods`, not here).
+- Compliance / modelling metadata blocks.
+- ZIP-packaged bundles — directory-backed only at v0.1. The
+  `LinkResolver` trait is the extension point; a future `ZipBundle`
+  plugs in without disturbing callers.
+- Caching — re-reads on every call at v0.1 per the lazy-load design.
+
+## [0.0.1] - 2026-04-19
+
 ### Added — `arko-core` 0.0.1
 - Workspace scaffolded, targeting calc spec **v0.1**.
 - `Study`, `ProcessMeta`, `FlowMeta`, `ImpactMeta`, `Parameter`, `Expression`

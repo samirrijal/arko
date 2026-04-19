@@ -1,0 +1,18 @@
+[package]
+name = "arko-io-ilcd-linker"
+description = "Arko ILCD cross-document linker — resolves Flow / FlowProperty / UnitGroup refs across a multi-file ILCD bundle (EU JRC layout)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true }
+roxmltree = "0.20"
