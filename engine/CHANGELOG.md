@@ -178,6 +178,23 @@ under `--ignored --nocapture`. Bundle is CC0 1.0 Universal and
 contains no attribution plumbing; the process UUIDs and impact
 number in this record are fully reproducible from public data.
 
+**Plausibility signal (not a correctness claim).** The `11.23 kg
+CO2-eq / kg beef LW` total sits at the lower end of the 10–30
+kg CO2-eq range reported across peer-reviewed beef LCA studies
+(spread driven by system — grass-fed vs feedlot — region, and
+allocation choices); a US cow-calf-finisher system lines up
+with the lower end. The species mix also matches the expected
+beef emissions profile: CH4 non-fossil dominates at 7.50
+(enteric fermentation + manure), N2O at 3.55 (fertiliser +
+manure N), CO2 at 0.18 (small fuel contribution). This is
+order-of-magnitude sanity that the wiring isn't producing
+nonsense under the independent-reference agreement — it is
+**not** a second parity claim. The comma-tail origin rule
+("Methane, biogenic" → `NonFossil`) is visibly exercised: had
+the classifier fallen through to `Unspecified`, CH4 would not
+have characterised under AR6 and the total would be ~3.7
+instead of 11.23.
+
 ### Changed — Phase 1 third-slot database confirmed: USDA LCA Commons (2026-04-20)
 
 Primary-source license read of the Federal LCA Commons landed at
