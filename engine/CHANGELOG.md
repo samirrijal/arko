@@ -7,6 +7,222 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — openLCA JSON-LD reader crate `arko-io-olca-jsonld` (2026-04-20)
+
+New crate at [`engine/io-olca-jsonld`](io-olca-jsonld) parses the
+openLCA JSON-LD on-disk format published by the USDA LCA Commons
+(and the wider Federal LCA Commons) into typed Rust structs, with an
+adapter that produces the same `arko_io_ilcd_linker::TypedColumn` the
+rest of the engine already consumes.
+
+**Why a separate crate rather than extending `arko-io-ilcd`.** ILCD
+XML and openLCA JSON-LD represent structurally similar content but
+disagree on every concrete shape: per-object JSON files keyed by
+`@id` and `@type`, UUID-addressed units instead of
+`dataSetInternalID` integers, `referenceUnit: true` flags instead of
+ID pointers, origin encoded as a trailing comma-qualifier
+(`"Methane, biogenic"`) rather than a parenthetical. `D-0014`
+captures the reasoning for standing up a separate crate: resist
+premature-shared-crate promotion until a third reader (post-v0.1)
+tells us what the right shared surface actually is.
+
+**Crate shape.**
+
+```text
+reader.rs   →  parse_process / parse_flow / parse_flow_property / parse_unit_group
+               (no-IO, consume JSON strings, emit native olca types)
+
+bundle.rs   →  OlcaBundle  (on-disk directory walker + lazy loader)
+
+adapter.rs  →  olca_to_typed_column  (the ONLY place that touches
+               arko_io_ilcd_linker's TypedColumn / TypedExchange)
+```
+
+**Scope bound the crate respects.** v0.1 is scoped to the USDA LCA
+Commons beef cattle finishing bundle (five-process cow-calf-finisher
+subgraph) — parse what that bundle needs, leave every other openLCA
+feature for the next bundle's pressure. Deliberate omissions are
+enumerated in [`SUPPORTED.md`](io-olca-jsonld/SUPPORTED.md) so that
+future readers can distinguish "feature I punted" from "regression":
+`LCI_RESULT` semantics, `allocation` factor blocks, `parameters` +
+`mathematicalRelations`, `avoidedProduct` sign-flip, cross-property
+exchanges, alternate unit groups, ZIP-packaged bundles, and the
+`actors` / `sources` / `categories` / `locations` / `dq_systems`
+object kinds are all v0.1-unsupported by design.
+
+**Correctness evidence.**
+
+- 24 unit tests covering the parser (exactly one
+  `quantitativeReference`, exactly one `referenceFlowProperty`,
+  exactly one `referenceUnit`, wrong `@type` errors cleanly), the
+  adapter (sign convention `(input, +magnitude)` and `(output,
+  +magnitude)` with sign-flip left to matrix-assembly downstream,
+  unit conversion `2 t → 2000 kg`, dangling `defaultProvider`
+  errors rather than silently drops, origin classification
+  propagates from the flow's name), CAS normalization
+  (`"000074-82-8"` → `"74-82-8"`), and comma-tail origin recognition
+  (`"biogenic"`, `"non-fossil"`, `"land use change"`, `"short
+  cycle"`, `"from soil or biomass stocks"`).
+- Real-data structural smoke at
+  [`io-olca-jsonld/tests/beef_bundle_smoke.rs`](io-olca-jsonld/tests/beef_bundle_smoke.rs)
+  loads all five beef processes end-to-end; verifies finishing's
+  three in-bundle `defaultProvider` edges (vitamin, calf, feed),
+  calf's two (vitamin, pasture), and zero in-bundle providers on
+  the three leaves; asserts `olca_to_typed_column` succeeds on every
+  process; verifies `Methane, biogenic`'s CAS trims to `"74-82-8"`
+  and its origin classifies as `NonFossil`. Env-var gated on
+  `USDA_BEEF_BUNDLE` (same pattern as `EF_REFERENCE_BUNDLE` for the
+  ILCD smokes) — bundle is CC0 and *could* be committed but is kept
+  on maintainer disk anyway to match the ÖKOBAUDAT smoke pattern
+  and avoid dataset bloat on a code repo.
+
+**Dev-deps** (not runtime-deps): `arko-core`, `arko-differential`,
+`arko-methods`, `arko-solvers-dense`, `sprs` — all for the parity
+smoke landing in the same commit.
+
+### Added — multi-process LU-parity smoke on USDA beef bundle (2026-04-20)
+
+New test at
+[`engine/io-olca-jsonld/tests/beef_multi_process_parity_smoke.rs`](io-olca-jsonld/tests/beef_multi_process_parity_smoke.rs)
+wires the five-process beef bundle through
+`arko_differential::run_single_vector` with a reference value from
+an independent Python implementation. Closes the LU-parity gap that
+[`ef_carpet_parity_smoke`](io-ilcd-linker/tests/ef_carpet_parity_smoke.rs)
+deliberately did not cover — carpet is a pre-aggregated `A = 1×1`
+LCI, so `C @ b` collapses the solve; the beef bundle is a genuine
+5×5 system with non-diagonal A (calf → finishing, pasture → calf,
+vitamin → finishing + calf, feed → finishing), and solving it
+requires LU factorization.
+
+**Independence posture of the reference.** The Python reference at
+`scratch/parity/beef_reference.py` (not shipped; maintainer-local):
+
+- stdlib `json` parser vs Arko's `serde_json`;
+- filesystem glob + dict lookups vs Arko's `OlcaBundle`;
+- reimplemented unit-conversion walker vs Arko's `adapter.rs`;
+- reimplemented CAS normaliser and comma-tail origin classifier vs
+  Arko's `normalize_cas` + `classify_flow_origin_from_name`;
+- `numpy.linalg.solve` (LAPACK `dgesv`, partial-pivot LU) vs Arko's
+  `DenseLuSolver` (nalgebra partial-pivot LU). Same algorithm
+  class, different implementations — the independence is real;
+- shared **only** at the AR6 WG1 Ch7 Table 7.15 factor values
+  (same posture as `carpet_reference.py`).
+
+A pass exercises (a) A-matrix wiring with diagonals from reference
+outputs and off-diagonals routed through `defaultProvider` edges,
+(b) B-matrix assembly across UUID-distinct-but-species-identical
+elementary flows (CO2 emitted to air vs water both carry CAS
+124-38-9 and both characterise under AR6 regardless of compartment),
+(c) CAS normalisation from the `000074-82-8` zero-padded form, (d)
+origin classification from the comma-tail `", biogenic"`, and (e)
+the LU solve itself against an independent linear-system solver.
+Factor-value correctness is **not** proven here — that stays with
+the hand-calc seed vectors in `arko_differential::seed`
+(wiring-vs-factor regime per `feedback_arko_correctness_regime`).
+
+**Tolerance class.** `ToleranceClass::CrossImpl` (`ε_abs = 1e-9`,
+`ε_rel = 1e-6`). The reference did not come from Arko itself; the
+observed deviation is `1.776e-15` (ulp-scale), well under the
+class threshold. Tightening to `ReferenceParity` would over-claim
+on a synthetic ground truth.
+
+**Env-var gating.** `USDA_BEEF_BUNDLE=/path/to/USDA_Beef cargo test
+-p arko-io-olca-jsonld --test beef_multi_process_parity_smoke --
+--ignored --nocapture`.
+
+### Observed — AR6 GWP100 parity against independent Python reference on USDA beef (2026-04-20)
+
+Second external-witness parity on real CC0 data. Run 2026-04-20
+against the USDA LCA Commons beef cattle finishing bundle (five
+processes: finishing `1b97b691…`, calf `ac2816ed…`, vitamin
+`9f9e378b…`, pasture `2185d89c…`, feed `efa8b1d9…`).
+
+|                               | value                         |
+|-------------------------------|-------------------------------|
+| Arko impact (AR6 GWP100)      | `1.123484925812980e+01` kg CO2-eq / kg beef LW |
+| Python reference (AR6 GWP100) | `1.123484925812980e+01` kg CO2-eq / kg beef LW |
+| max \|deviation\|             | `1.776e-15`                   |
+| max relative deviation        | `1.581e-16`                   |
+| tolerance applied             | `eps_abs=1e-9, eps_rel=1e-6`  |
+| verdict                       | **PASS**                      |
+
+Species contributions (kg CO2-eq per kg beef LW, signed):
+
+| species            | contribution |
+|--------------------|--------------|
+| CH4 non-fossil     | `7.504e+00`  |
+| N2O                | `3.553e+00`  |
+| CO2                | `1.770e-01`  |
+
+**What this supports.** The end-to-end pipeline from openLCA JSON-LD
+reader → `OlcaBundle` → `olca_to_typed_column` → `FlowMeta` bridge →
+`build_c_matrix` → LU-backed `compute()` → `result.impact[0]`
+produces the same AR6 GWP100 number as a reader/unit-converter/
+matrix-assembler/solver stack written independently from the same
+IPCC factor table. Flow-matching is correct across multi-species
+inventory (16 distinct elementary flow UUIDs, 9 aggregated CAS +
+origin keys that AR6 characterises), off-diagonal routing through
+`defaultProvider` matches the intended DAG, and the LU solve
+produces the same scaling vector to IEEE-754 ulp.
+
+**What this still does *not* support.** Methodology correctness of
+the AR6 factor values themselves (shared between implementations;
+covered by `arko_differential::seed`); parity against a *third*
+independent engine such as Brightway 2.5 or openLCA itself (next
+follow-up now that carpet + beef are both covered); parity on
+parameterised datasets, allocation-factor blocks, or `LCI_RESULT`
+documents (all v0.1-unsupported per `SUPPORTED.md`).
+
+Reproducible by setting `USDA_BEEF_BUNDLE` and running the test
+under `--ignored --nocapture`. Bundle is CC0 1.0 Universal and
+contains no attribution plumbing; the process UUIDs and impact
+number in this record are fully reproducible from public data.
+
+### Changed — Phase 1 third-slot database confirmed: USDA LCA Commons (2026-04-20)
+
+Primary-source license read of the Federal LCA Commons landed at
+[`docs/licenses/usda-lca-commons.md`](../docs/licenses/usda-lca-commons.md),
+resolving the third slot opened by `D-0012`. Decision entry at
+[`DECISIONS.md`](../DECISIONS.md) § `D-0013`.
+
+**License posture:** every dataset in the Commons is dedicated to the
+public domain under **CC0 1.0 Universal**, mandatory at submission per
+USDA-NAL policy (LCA Commons Submission Guidelines, Final 2018-07-25).
+CC0 § 2 is explicit on commercial, advertising, and promotional use.
+Two non-copyright carve-outs travel with access (USDA/ARS/NAL
+trademark restriction in advertising; Appendix A AS-IS + indemnity);
+neither blocks any Arko-ship operation. Strictly more permissive than
+the JRC EF reference package (no attribution legally required, no
+term expiry, no redistribution ceiling).
+
+**Phase 1 exit slate resolves to:**
+
+1. ÖKOBAUDAT 2024-I — CC-BY-ND-3.0-DE with attribution (imported).
+2. JRC EF reference package — EC Decision 2011/833/EU reuse with
+   attribution (imported).
+3. **USDA LCA Commons — CC0 1.0 Universal, unrestricted (to be
+   imported).**
+
+ProBas (Umweltbundesamt) is not rejected, just deferred to a future
+fourth-slot question if it ever enters the Arko critical path.
+
+**Format:** LCA Commons publishes in ILCD XML (openLCA-compatible per
+Submission Guidelines) — the existing `arko-io-ilcd` reader handles
+parsing without net-new format engineering. Import work proper is
+incremental from the ÖKOBAUDAT / EF reader surface, not a new crate.
+
+**Phase 2 `arko-license` preset roadmap:** add `usda_lca_commons_cc0`
+encoding no legal attribution requirement, unrestricted commercial use
+and redistribution, no term expiry, USDA/ARS/NAL trademark carve-out,
+AS-IS warranty disclaimer. Serves as the "baseline free" calibration
+for the preset registry.
+
+**Hosting ToS flag (not a Phase 1 blocker):** Appendix A's indemnity
+runs from "the user" to the Government; when Arko is the immediate
+accessor serving customers downstream, the hosting ToS needs
+pass-through language. Checklist item for the first paid Arko
+hosted-data customer; legal review recommended before that point.
+
 ### Added — cross-implementation parity smoke on real EF data (Phase 1, Week 5)
 
 New test at
@@ -123,10 +339,20 @@ refinement:
 - **EF reference package infrastructure is now the primary Week 5
   generalisation target.** Module docstring of `ef_reference_smoke.rs`
   updated accordingly.
-- **Third foreground-free database TBD.** ProBas (Umweltbundesamt)
-  and USDA LCA Commons are the two current candidates; both require
-  a primary-source license check before reader work begins — same
-  discipline as `D-0012`.
+- **Third foreground-free database named: USDA LCA Commons**
+  (2026-04-20, `D-0013`). Primary-source license read landed at
+  [`docs/licenses/usda-lca-commons.md`](../docs/licenses/usda-lca-commons.md).
+  Every dataset in the Federal LCA Commons is dedicated to the
+  public domain under **CC0 1.0 Universal**, mandatory at
+  submission per USDA-NAL policy (Submission Guidelines Final
+  2018-07-25). Strictly more permissive than the EF reference
+  package — no legal attribution requirement, commercial use
+  explicit in CC0 § 2, no term expiry, no redistribution ceiling;
+  two non-copyright carve-outs (USDA/ARS/NAL trademark in
+  advertising, Appendix A AS-IS + indemnity) shape marketing and
+  hosting-ToS language but do not constrain the engine path.
+  ProBas (Umweltbundesamt) deferred to a future fourth-slot
+  question if it ever enters the Arko critical path.
 
 `D-0005`'s "no ecoinvent in V1" commitment is preserved; `D-0010`
 sharpens the working definition of what "free" means for that

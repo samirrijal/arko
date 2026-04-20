@@ -9,6 +9,199 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-20 · `D-0014` — openLCA JSON-LD reader lives in a new crate, not in `arko-io-ilcd`
+
+**Context:** Phase 1 had three foreground-free databases named after
+`D-0013`. Two of the three (ÖKOBAUDAT, JRC EF) publish in ILCD XML and
+plug into the existing [`arko-io-ilcd`](engine/io-ilcd) reader. The
+third — USDA LCA Commons — publishes in **openLCA JSON-LD**, a
+structurally-similar but syntactically-different serialization that
+the ILCD reader cannot decode: per-object JSON under `processes/`,
+`flows/`, `flow_properties/`, `unit_groups/`; UUID-addressed units
+instead of `dataSetInternalID` integers; `referenceUnit: true` flags
+instead of ID pointers; origin encoded as a comma-tail
+(`"Methane, biogenic"`) rather than a parenthetical
+(`"methane (biogenic)"`).
+
+The question when starting Week-6 of Phase 1: extend `arko-io-ilcd`
+to dual-read XML *and* JSON-LD, or stand up a separate crate?
+
+**Decision:** Separate crate — `arko-io-olca-jsonld` — scoped to the
+USDA beef cattle finishing bundle (five-process cow-calf-finisher
+subgraph), with a narrow adapter boundary producing the same
+`TypedColumn` the ILCD linker already consumes.
+
+**Reasoning:**
+
+1. **Two formats, one linker.** ILCD and openLCA JSON-LD disagree on
+   every concrete shape while representing the same conceptual
+   model. A dual-reader crate would need two parallel parser trees
+   and a lot of shape-adaptation boilerplate in a single module; the
+   adapter layer is the single place where shapes collapse into one
+   typed column. A dedicated JSON-LD reader plus a single-purpose
+   adapter keeps that collapse point explicit.
+2. **Resist premature-shared-crate promotion.** Shared-types
+   abstraction needs ≥ 3 data points (ILCD, openLCA JSON-LD, and one
+   more) to reveal the right shared surface. Two is too few; forcing
+   unification now would pick the wrong axis and need to be
+   undone. Duplicated parser plumbing in two crates is the
+   temporarily-right trade.
+3. **Boundary discipline.** Parser emits pure `OlcaProcess` / etc.
+   native types; the adapter is the **only** place that touches
+   `arko_io_ilcd_linker::{TypedColumn, TypedExchange, FlowType,
+   ReferenceUnit}`. A parse failure on a USDA bundle can be
+   diagnosed without also untangling the matrix-bridge concerns.
+4. **Scope matches the data under pressure.** v0.1 reader targets
+   the beef bundle (`SUPPORTED.md` enumerates what the bundle needs
+   and what the crate deliberately punts: `LCI_RESULT` semantics,
+   `allocation` factor blocks, parameter expressions,
+   `avoidedProduct` sign-flip, cross-property exchanges, ZIP
+   packaging, `actors` / `sources` / `categories` / `locations` /
+   `dq_systems` object kinds). Extensions land when the next bundle
+   demands them, not speculatively.
+
+**Evidence the decision produced:**
+
+- Crate lands with 24 unit tests covering parser + adapter + CAS
+  normalization + origin classification.
+- Structural smoke test ([`engine/io-olca-jsonld/tests/beef_bundle_smoke.rs`](engine/io-olca-jsonld/tests/beef_bundle_smoke.rs))
+  loads all five beef processes, verifies the 3-edge finishing DAG
+  and 2-edge calf DAG, trims the zero-padded `000074-82-8` CAS to
+  the canonical `74-82-8`, classifies `Methane, biogenic` as
+  `NonFossil` via the comma-tail rule.
+- Multi-process parity smoke
+  ([`engine/io-olca-jsonld/tests/beef_multi_process_parity_smoke.rs`](engine/io-olca-jsonld/tests/beef_multi_process_parity_smoke.rs))
+  matches an independent Python reference (`numpy.linalg.solve`,
+  stdlib `json`, reimplemented CAS/origin rules) on AR6 GWP100 to
+  max abs deviation `1.776e-15` — essentially ulp agreement,
+  `CrossImpl` tolerance class is well above what the test actually
+  requires but the right *claim* for this evidence.
+
+**Non-decision carried forward:** when/whether to promote shared
+types between `arko-io-ilcd` and `arko-io-olca-jsonld` stays
+open. Answer when the third reader (ecospold-2, or whatever comes
+after) tells us what the right shared surface actually is.
+
+---
+
+## 2026-04-20 · `D-0013` — USDA LCA Commons named the Phase 1 third-slot foreground-free database
+
+**Context:** `D-0012` (2026-04-19) reopened the third slot on the
+Phase 1 "three free databases importable" exit criterion after the
+EF LCI bundle was reclassified as restricted. Two candidates were
+named pending primary-source license checks: ProBas
+(Umweltbundesamt) and USDA LCA Commons. The same
+EF-bifurcation-style discipline that produced
+[`docs/licenses/jrc-ef.md`](docs/licenses/jrc-ef.md) was applied to
+the USDA side on 2026-04-20; full primary-source analysis lives at
+[`docs/licenses/usda-lca-commons.md`](docs/licenses/usda-lca-commons.md).
+
+**The license read, in one line:** every dataset in the Federal LCA
+Commons is dedicated to the public domain under **CC0 1.0
+Universal**, mandatory at submission per USDA-NAL policy (*"USDA-NAL
+is requiring that all datasets submitted to the LCA Commons be
+placed in the public domain under the terms of the Creative Commons
+Zero, Public Domain Dedication License (CC0 1.0 Universal (CC0
+1.0))."* — LCA Commons Submission Guidelines, 2018-07-25 Final,
+§ "Placing Your Data in the Public Domain"). CC0 § 2 waives
+copyright "for any purpose whatsoever, including without limitation
+commercial, advertising or promotional purposes."
+
+Two non-copyright carve-outs travel with access but neither blocks
+any Arko-ship operation:
+
+1. **Trademark-style restriction** on USDA/ARS/NAL names in
+   advertising/endorsement copy (CC0 § 4(a) explicitly preserves
+   trademark).
+2. **Appendix A AS-IS warranty disclaimer + indemnity** from user
+   to Government for claims arising from data use.
+
+Strictly more permissive than the JRC EF reference package:
+
+| Axis                  | JRC EF ref package              | USDA LCA Commons               |
+| --------------------- | ------------------------------- | ------------------------------ |
+| License               | EC Decision 2011/833/EU (CC-BY equiv.) | CC0 1.0 Universal       |
+| Attribution required? | Yes (legal)                     | No (encouraged, not legal)     |
+| Commercial use?       | Yes                             | Yes (explicit in CC0 § 2)      |
+| Redistribution?       | Yes with attribution            | Yes, unrestricted              |
+| Term expiry?          | None (ref package)              | None                           |
+
+**Decision:**
+
+1. **USDA LCA Commons takes the third slot** on the Phase 1
+   foreground-free database list. The Phase 1 exit criterion
+   "three free databases importable" resolves to:
+
+   1. ÖKOBAUDAT 2024-I — CC-BY-ND style with attribution (imported).
+   2. JRC EF reference package — EC Decision 2011/833/EU reuse with
+      attribution (imported).
+   3. **USDA LCA Commons — CC0 1.0 Universal, unrestricted (to be
+      imported).**
+
+2. **ProBas (Umweltbundesamt) deferred, not rejected.** A future
+   fourth-slot candidate; a primary-source license read is still
+   owed if/when it enters the Arko critical path. No Phase 1
+   dependency on it.
+
+3. **`arko-license` preset roadmap.** Add a
+   `usda_lca_commons_cc0` preset encoding: no legal attribution
+   requirement, unrestricted commercial use, unrestricted
+   redistribution, no term expiry, USDA/ARS/NAL trademark carve-out,
+   AS-IS warranty disclaimer. This becomes the most permissive
+   preset in the crate and serves as the "baseline free"
+   calibration. Phase 2 work, not Phase 1.
+
+4. **Hosting ToS language flagged for legal review before first
+   paid hosted-data customer.** Appendix A's indemnity runs from
+   "the user" (whoever accesses the data) to the Government. When
+   Arko is the immediate accessor and serves customers downstream,
+   the hosting ToS needs pass-through language so the indemnity
+   resolves correctly. Not a Phase 1 blocker; a checklist item for
+   the first paid Arko customer.
+
+**Rationale:** The whole point of the `D-0012` discipline was that
+a "free database" claim silently depending on a restricted bundle
+would poison the Phase 1 exit. The USDA read produces the opposite
+outcome for its candidate — CC0 is the cleanest possible license
+posture, letting Arko ship fixtures, bundle the data, serve it via
+SaaS, cite it in release notes, and publish parity smokes against
+it without qualification. Taking the third slot on that basis is
+the low-risk, license-honest move.
+
+The format alignment is also convenient: the Submission Guidelines
+confirm LCA Commons publishes in ILCD XML (openLCA-compatible), so
+the existing `arko-io-ilcd` reader handles the parsing work
+without net-new format engineering.
+
+**Alternatives rejected:**
+
+- *Hold the third slot open through Phase 1:* risks the Phase 1
+  exit narrative reading as "two free databases, third TBD"
+  instead of "three free databases." The claim is crisper if the
+  slot is filled by exit time.
+- *Fill the slot with ProBas instead:* requires the same
+  primary-source license read first, and ProBas is a narrower data
+  lot in a less-structured distribution. USDA's CC0 + ILCD-XML
+  combination is strictly cleaner on both legal and engineering
+  axes.
+- *Treat USDA LCA Commons as a V2+ addition and ship Phase 1 with
+  two databases:* weakens the generalisation signal that the
+  three-database target exists to produce.
+
+**Reversal condition:** If USDA-NAL changes the submission policy
+(e.g. moves away from CC0 for new submissions, or imposes
+dataset-specific restrictions that contradict the Submission
+Guidelines), revisit this entry. If the first LCA Commons reader
+import surfaces a structural mismatch between the Submission
+Guidelines-declared format and the actual distributed artefacts,
+revisit (3) and potentially the slot choice itself.
+
+**Cross-references:** `D-0005` (V1 open EU databases only), `D-0010`
+(foreground-free vs background-ecoinvent-dependent), `D-0012`
+(EF reference package vs LCI bifurcation; slot reopened here).
+
+---
+
 ## 2026-04-19 · `D-0012` — EF "reference package" vs EF "LCI datasets": license bifurcation
 
 **Context:** `D-0010` listed "the JRC EF reference package" as one of
