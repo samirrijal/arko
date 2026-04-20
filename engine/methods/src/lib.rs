@@ -14,9 +14,14 @@
 //!   studies (single-category GWP100 per AR6 WG1 Ch7 Table 7.15).
 //! - [`standard::ipcc_ar5_gwp100`] — legacy-verification parity for
 //!   EPDs authored before the AR6 migration.
+//! - [`ef_31::ef_31`] — EF 3.1 V1, the 7 emission-based core
+//!   indicators of EN 15804+A2 (shippable-EPD floor). Scaffold
+//!   landed 2026-04-21 with the 7-category shape and empty factor
+//!   lists; factor data entry is a separate landing against the
+//!   JRC EF 3.1 CF spreadsheet. Scope rationale: `DECISIONS.md`
+//!   entry `D-0015`.
 //!
-//! EF 3.1 V1 (7 emission-based core indicators of EN 15804+A2),
-//! CML 2001, and ReCiPe 2016 Midpoint are the planned Phase-1-exit
+//! CML 2001 and ReCiPe 2016 Midpoint are the planned Phase-1-exit
 //! additions.
 //!
 //! # Matching semantics
@@ -51,6 +56,7 @@
 //!   datasets where CAS was lost in translation.
 
 pub mod builder;
+pub mod ef_31;
 pub mod method;
 pub mod registry;
 pub mod standard;
