@@ -106,6 +106,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "arko-io-olca-jsonld"
+version = "0.0.1"
+dependencies = [
+ "arko-core",
+ "arko-differential",
+ "arko-io-ilcd",
+ "arko-io-ilcd-linker",
+ "arko-methods",
+ "arko-solvers-dense",
+ "serde",
+ "serde_json",
+ "sprs",
+ "thiserror",
+]
+
+[[package]]
 name = "arko-license"
 version = "0.0.1"
 dependencies = [

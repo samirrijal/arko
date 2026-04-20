@@ -1,0 +1,27 @@
+[package]
+name = "arko-io-olca-jsonld"
+description = "Arko openLCA JSON-LD reader — parses USDA LCA Commons / Federal LCA Commons unit-process bundles into typed Rust structs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+arko-io-ilcd.workspace = true
+arko-io-ilcd-linker.workspace = true
+
+[dev-dependencies]
+arko-core.workspace = true
+arko-differential.workspace = true
+arko-methods.workspace = true
+arko-solvers-dense.workspace = true
+sprs.workspace = true
