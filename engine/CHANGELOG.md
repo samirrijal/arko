@@ -7,6 +7,58 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — `FactorMatch::CasCompartment` variant (2026-04-20)
+
+Fifth variant of the flow-matching enum in
+[`engine/methods/src/method.rs`](methods/src/method.rs), keyed on
+`(cas, compartment)` with compartment-prefix semantics symmetric to
+the existing `NameAndCompartment` variant. Origin-agnostic.
+
+**Why.** EF 3.1 — and any LCIA method with compartment-dependent
+CFs — needs to characterise the same substance differently depending
+on where it's emitted. SO2 to air is an acidification flow
+(CF ≈ 1.31 mol H+-eq/kg); SO2 in water is not. With only `Cas` and
+`CasOrigin` available, the author's choices were (a) tag the substance
+globally and get the wrong CF for water emissions, or (b) fall back to
+name-based matching, which is brittle across databases that spell the
+same substance differently. `CasCompartment` is the
+CAS-reliable + compartment-specific combination the taxonomy was
+missing.
+
+**What changed.**
+
+- New variant: `CasCompartment { cas: String, compartment: Vec<String> }`.
+- `FactorMatch::matches()` arm: CAS equality + flow-compartment
+  starts-with matcher-compartment (same prefix semantics as
+  `NameAndCompartment`).
+- `matcher_label()` arm in
+  [`engine/methods/src/builder.rs`](methods/src/builder.rs) so
+  `DuplicateMatch` errors show the new variant legibly.
+- 12 new tests — 9 at the method layer (prefix match,
+  deeper-path match, different-compartment rejection, shorter-path
+  rejection, no-CAS rejection, wrong-CAS rejection, origin-agnostic
+  behaviour, empty-compartment edge case, JSON round-trip) + 3 at the
+  builder layer (route-into-matrix, disjoint compartments coexist,
+  `Cas × CasCompartment` overlap hard-fails via `DuplicateMatch`).
+
+**What did not change.**
+
+- Builder semantics. "At most one factor per (category, flow)" is
+  still the invariant. No priority/fallback ordering exists or was
+  added — method authors pick one matcher per (category, flow) pair,
+  and overlap is still a hard `DuplicateMatch` error.
+- Existing variants. `Cas`, `CasOrigin`, `FlowId`,
+  `NameAndCompartment` are unchanged; their serde tags are
+  unchanged. EF 3.1 only requires a *new* variant, not surgery on
+  existing ones.
+
+**Decision record.** [`DECISIONS.md` `D-0015`](../DECISIONS.md)
+carries the full rationale, alternatives considered (extending
+`CasOrigin` with an optional compartment field, shipping EF 3.1 with
+only existing-taxonomy categories, adding priority-ordered fallback
+matching — all rejected), and the paired EF 3.1 V1 scope decision
+(7 emission-based EN 15804+A2 core indicators).
+
 ### Added — openLCA JSON-LD reader crate `arko-io-olca-jsonld` (2026-04-20)
 
 New crate at [`engine/io-olca-jsonld`](io-olca-jsonld) parses the

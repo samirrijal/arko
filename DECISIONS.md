@@ -9,6 +9,171 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-20 · `D-0015` — `FactorMatch::CasCompartment` variant added; EF 3.1 V1 scoped to the 7 emission-based EN 15804+A2 core indicators
+
+**Context:** Phase 1 exit slate requires four method presets (AR6
+GWP100, EF 3.1, CML 2001, ReCiPe 2016). Shipping AR6 first locked in
+the existing `FactorMatch` taxonomy — four variants: `Cas`,
+`CasOrigin`, `FlowId`, `NameAndCompartment`. Starting on EF 3.1
+surfaced a category of factor that neither of the CAS variants nor
+the name-based variant can express cleanly: **CAS-keyed, compartment-
+specific** characterization factors.
+
+Concrete example the existing taxonomy gets wrong: **EF 3.1
+Acidification** scores SO2 emitted to air at CF ≈ 1.31 mol H+-eq/kg,
+but SO2 dissolved in water has CF = 0 for acidification (it's counted
+under eutrophication pathways if anywhere). With only `Cas` available,
+the author has to choose: either tag SO2 globally with 1.31 (wrong
+for water emissions) or leave SO2 unmatched and rely on
+`NameAndCompartment` to pick it up by name (brittle across databases
+where the substance name might be "Sulfur dioxide" vs "Sulphur dioxide"
+vs "SO2"). CAS is the reliable cross-database key; compartment is the
+orthogonal axis the CF depends on; the taxonomy needed a variant that
+combines both.
+
+**Decision:** Add a fifth `FactorMatch` variant:
+
+```rust
+CasCompartment { cas: String, compartment: Vec<String> }
+```
+
+Semantics: flow's CAS must equal `cas` **and** the flow's compartment
+path must start with the matcher's compartment (prefix match, same
+as `NameAndCompartment`). Origin-agnostic. An empty `compartment`
+vector reduces to plain CAS matching (redundant with `Cas` — method
+authors should prefer the simpler variant; the code doesn't reject the
+redundancy but the discipline is documented).
+
+**Concrete behaviour — see the tests that define it:**
+
+- Basic prefix match: `CasCompartment { cas: "7446-09-5",
+  compartment: ["emission", "air"] }` matches an SO2 flow in
+  `emission/air/urban` (flow's compartment is longer than matcher's —
+  prefix semantics per
+  [`cas_compartment_matches_flow_with_deeper_path`](engine/methods/src/method.rs))
+- Disjoint compartments coexist: same CAS, compartment `["air"]` and
+  compartment `["water"]` in the same category match two different
+  flows and both land in the matrix (per
+  [`disjoint_cas_compartment_factors_coexist_in_one_category`](engine/methods/src/builder.rs))
+- Wrong compartment rejected: SO2 matcher on `["emission", "air"]`
+  does not match an SO2 flow in `emission/water` (per
+  [`cas_compartment_rejects_different_compartment`](engine/methods/src/method.rs) —
+  this is the load-bearing property the variant exists to enforce)
+- Overlap with `Cas` hard-fails: a plain `Cas` factor and a
+  `CasCompartment` factor matching the same flow in the same category
+  triggers `CMatrixError::DuplicateMatch` (per
+  [`cas_and_cas_compartment_matching_same_flow_is_duplicate_error`](engine/methods/src/builder.rs))
+
+**Reasoning:**
+
+1. **Load-bearing for EF 3.1 core categories.** Of the 7 EN 15804+A2
+   core emission indicators EF 3.1 V1 will ship (see scope decision
+   below), four — Acidification, Eutrophication-freshwater,
+   Eutrophication-marine, Eutrophication-terrestrial — have
+   compartment-dependent CFs. Without this variant, those four
+   categories cannot be expressed against CAS-keyed flows. With it,
+   they fall out naturally.
+2. **Generalises forward to ReCiPe 2016.** ReCiPe 2016 has the same
+   compartment dependence across acidification and eutrophication
+   midpoints. Landing the variant now, once, against EF 3.1's factor
+   entry is strictly cheaper than landing it twice (once per method).
+3. **Orthogonal to `CasOrigin`.** AR6 CH4 needs fossil/non-fossil
+   split (origin axis); EF 3.1 SO2 needs air/water split (compartment
+   axis). No current preset needs **both** axes simultaneously — but
+   when one eventually does, the right move is a composite variant
+   (`CasOriginCompartment`) rather than extending either existing
+   variant with an optional field. Deferring that shape until a real
+   preset demands it avoids premature design.
+4. **Duplicate-match discipline unchanged.** The builder's "at most
+   one factor per (category, flow)" invariant continues to hard-fail
+   on authorship bugs. No priority-ordering or "most-specific wins"
+   logic was added — method authors pick one matcher per flow per
+   category and the builder guards that discipline.
+
+**Non-feature: there is no specificity ordering.** It's tempting to
+read the enum variant declaration order
+(`Cas` → `CasOrigin` → `CasCompartment` → `FlowId` → `NameAndCompartment`)
+as a priority chain where more-specific matchers "win" over
+less-specific ones. **This is not what the builder does.** Each
+factor is tested against each flow independently; two matches within
+the same category hard-fail via `DuplicateMatch`. The enum order is
+documentation, not priority. Recording this explicitly because the
+"most-specific wins" mental model is the first intuition a future
+contributor will have, and it would quietly produce wrong behaviour
+if they relied on it.
+
+**EF 3.1 V1 scope (paired decision):** EF 3.1 will ship the **7
+emission-based core indicators of EN 15804+A2**:
+
+1. Climate change (`CasOrigin` — reuses AR6 factor table)
+2. Ozone depletion (`Cas`)
+3. Photochemical ozone formation (`Cas`)
+4. Acidification (`CasCompartment`)
+5. Eutrophication, freshwater (`CasCompartment`)
+6. Eutrophication, marine (`CasCompartment`)
+7. Eutrophication, terrestrial (`CasCompartment`)
+
+Deferred to V2: particulate matter (subcompartment-dense; EN 15804+A2
+annex "additional indicator"); ionising radiation, human tox cancer,
+human tox non-cancer, ecotoxicity freshwater, land use, resource use
+fossils, resource use minerals/metals (also "additional indicators"
+in EN 15804+A2). **Water use deferred pending a regionalised
+matcher** (`CasRegion` or compartment-with-region variant) that aligns
+with ReCiPe 2016's regionalised midpoints — doing it twice is waste;
+doing it once when the regionalisation shape is known is right.
+
+This scope produces a shippable EPD floor: any EN 15804+A2 EPD that
+relies only on **core** indicators (the mandatory set) is fully
+serviceable by Arko's EF 3.1 V1 preset. EPDs that additionally report
+"additional indicators" (optional reporting category) will need V2.
+Framing the scope around the standard's core/additional split, rather
+than picking a subset of categories by feel, makes the V1-vs-V2
+boundary defensible to verifiers.
+
+**Alternatives considered:**
+
+- *Extend `CasOrigin` with an optional `compartment` field.* Rejected:
+  breaks the variant's tight semantics (origin-only matching) and
+  forces every existing `CasOrigin` factor to carry an explicit `None`
+  in its JSON serialization.
+- *Ship EF 3.1 with only the categories that fit the existing
+  taxonomy (CC + OD + POCP).* Rejected: produces a preset that cannot
+  generate an EN 15804+A2 EPD because the eutrophication and
+  acidification core indicators would be missing. Shippable-EPD floor
+  is the right correctness bar for a core preset.
+- *Build a priority-ordered fallback chain in the builder
+  ("CasCompartment wins over Cas").* Rejected: changes matching
+  semantics for all existing factors, not just new ones. Duplicate-
+  error discipline is strictly safer — method authorship bugs surface
+  loudly. Priority fallback would let bugs compile.
+
+**Evidence the decision produced:**
+
+- New variant shipped at
+  [`engine/methods/src/method.rs`](engine/methods/src/method.rs) with
+  `matches()` arm.
+- Nine method-level tests covering prefix match, deeper-path match,
+  compartment rejection, shorter-path rejection, no-CAS rejection,
+  wrong-CAS rejection, origin-agnostic match, empty-compartment
+  edge, JSON round-trip — all in
+  [`engine/methods/src/method.rs`](engine/methods/src/method.rs)
+  `tests` module under the `CasCompartment` heading.
+- Three builder-level tests covering route-into-matrix, disjoint
+  coexistence, and `Cas × CasCompartment` duplicate error — in
+  [`engine/methods/src/builder.rs`](engine/methods/src/builder.rs).
+- `matcher_label()` arm added so `DuplicateMatch` error messages show
+  `CAS 7446-09-5 in ["emission", "air"]` rather than falling off a
+  non-exhaustive match.
+
+**Non-decision carried forward:** whether a composite
+`CasOriginCompartment` variant is needed. Defer until a real preset
+has a substance whose CF depends on both axes simultaneously.
+
+**Cross-references:** `D-0007` (AR6 + AR5 preset pair —
+`CasOrigin` precedent), the CH4 origin/compartment example above.
+
+---
+
 ## 2026-04-20 · `D-0014` — openLCA JSON-LD reader lives in a new crate, not in `arko-io-ilcd`
 
 **Context:** Phase 1 had three foreground-free databases named after

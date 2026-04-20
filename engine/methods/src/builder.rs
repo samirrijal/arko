@@ -138,6 +138,9 @@ fn matcher_label(m: &FactorMatch) -> String {
     match m {
         FactorMatch::Cas { cas } => format!("CAS {cas}"),
         FactorMatch::CasOrigin { cas, origin } => format!("CAS {cas} ({origin:?})"),
+        FactorMatch::CasCompartment { cas, compartment } => {
+            format!("CAS {cas} in {compartment:?}")
+        }
         FactorMatch::FlowId { id } => format!("id {id}"),
         FactorMatch::NameAndCompartment { name, compartment } => {
             format!("\"{name}\" in {compartment:?}")
@@ -279,5 +282,83 @@ mod tests {
         let b = build_c_matrix(&method, &flows).unwrap();
         assert_eq!(b.matrix.shape(), (1, 1));
         assert!(b.unmatched_flows.is_empty());
+    }
+
+    // ---- CasCompartment interaction with builder --------------------
+
+    fn so2_factor_air(value: f64) -> CharacterizationFactor {
+        CharacterizationFactor {
+            match_on: FactorMatch::CasCompartment {
+                cas: "7446-09-5".into(),
+                compartment: vec!["emission".into(), "air".into()],
+            },
+            value,
+            note: None,
+        }
+    }
+
+    fn so2_factor_water(value: f64) -> CharacterizationFactor {
+        CharacterizationFactor {
+            match_on: FactorMatch::CasCompartment {
+                cas: "7446-09-5".into(),
+                compartment: vec!["emission".into(), "water".into()],
+            },
+            value,
+            note: None,
+        }
+    }
+
+    fn so2_flow(compartment: Vec<&str>) -> FlowMeta {
+        FlowMeta {
+            id: "f_so2".into(),
+            name: "SO2".into(),
+            unit: Unit::new("kg"),
+            compartment: compartment.into_iter().map(String::from).collect(),
+            cas: Some("7446-09-5".into()),
+            origin: arko_core::meta::FlowOrigin::Unspecified,
+        }
+    }
+
+    #[test]
+    fn cas_compartment_factor_routes_flow_into_matrix() {
+        let method = single_cat_method(vec![so2_factor_air(1.31)]);
+        let flows = vec![so2_flow(vec!["emission", "air"])];
+        let b = build_c_matrix(&method, &flows).unwrap();
+        assert_eq!(b.matrix.shape(), (1, 1));
+        assert!(b.unmatched_flows.is_empty());
+    }
+
+    #[test]
+    fn disjoint_cas_compartment_factors_coexist_in_one_category() {
+        // Two factors, same CAS, different compartments — one flow
+        // each. Neither duplicates the other; both land.
+        let method = single_cat_method(vec![so2_factor_air(1.31), so2_factor_water(0.0)]);
+        let mut air = so2_flow(vec!["emission", "air"]);
+        air.id = "f_so2_air".into();
+        let mut water = so2_flow(vec!["emission", "water"]);
+        water.id = "f_so2_water".into();
+        let flows = vec![air, water];
+        let b = build_c_matrix(&method, &flows).unwrap();
+        assert_eq!(b.matrix.shape(), (1, 2));
+        assert!(b.unmatched_flows.is_empty());
+    }
+
+    #[test]
+    fn cas_and_cas_compartment_matching_same_flow_is_duplicate_error() {
+        // Authorship bug: a plain Cas factor and a CasCompartment
+        // factor both match the same SO2-to-air flow. The builder
+        // must hard-fail rather than silently pick one or sum the
+        // values.
+        let cas_factor = CharacterizationFactor {
+            match_on: FactorMatch::Cas {
+                cas: "7446-09-5".into(),
+            },
+            value: 1.0,
+            note: None,
+        };
+        let method = single_cat_method(vec![cas_factor, so2_factor_air(1.31)]);
+        let flows = vec![so2_flow(vec!["emission", "air"])];
+        let err = build_c_matrix(&method, &flows).unwrap_err();
+        assert!(matches!(err, CMatrixError::DuplicateMatch { .. }));
     }
 }
