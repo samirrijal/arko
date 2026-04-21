@@ -34,16 +34,21 @@ impl MethodRegistry {
     /// The "batteries-included" registry: populated with the preset
     /// methods Arko ships by default.
     ///
-    /// v0.0.1 ships:
+    /// v0.1 ships:
     /// - `("ipcc-ar6-gwp100", "1")` — **recommended default** for new
-    ///   studies.
+    ///   climate-only studies.
     /// - `("ipcc-ar5-gwp100", "1")` — legacy-verification parity for
     ///   historical EPDs authored under AR5.
+    /// - `("ef-3.1", "1")` — first non-climate preset; ships the 7
+    ///   EN 15804+A2 core emission indicators (CC, OD, POCP, AC,
+    ///   EU-fw, EU-m, EU-t). Required for shippable EPDs against the
+    ///   construction-products PCR.
     #[must_use]
     pub fn standard() -> Self {
         let mut r = Self::new();
         r.register(crate::standard::ipcc_ar6_gwp100());
         r.register(crate::standard::ipcc_ar5_gwp100());
+        r.register(crate::ef_31::ef_31());
         r
     }
 
@@ -180,12 +185,28 @@ mod tests {
     }
 
     #[test]
-    fn standard_registry_ships_both_ar5_and_ar6() {
+    fn standard_registry_ships_ar5_ar6_and_ef_31() {
         let r = MethodRegistry::standard();
         assert_eq!(
             r.len(),
-            2,
-            "v0.0.1 standard registry ships AR6 (default) + AR5 (legacy parity)"
+            3,
+            "v0.1 standard registry ships AR6 (default) + AR5 (legacy parity) + EF 3.1 (EN 15804+A2 core)"
+        );
+    }
+
+    #[test]
+    fn standard_registry_has_ef_31() {
+        let r = MethodRegistry::standard();
+        let m = r
+            .lookup(&MethodRef {
+                id: "ef-3.1".into(),
+                version: "1".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            m.categories.len(),
+            7,
+            "EF 3.1 V1 ships the 7 EN 15804+A2 core emission indicators"
         );
     }
 }

@@ -57,6 +57,7 @@
 //!   product category of construction products*.
 
 use crate::method::{CharacterizationFactor, FactorMatch, ImpactCategory, ImpactMethod};
+use arko_core::meta::FlowOrigin;
 
 /// EF 3.1 V1 — 7 emission-based core indicators of EN 15804+A2.
 ///
@@ -144,6 +145,26 @@ fn cas_factor(cas: &str, value: f64, note: &str) -> CharacterizationFactor {
     }
 }
 
+/// CAS+origin matcher factor. Used by Climate change for the
+/// CO2/CH4 fossil/biogenic/LULUC three-way splits that AR6 GWP100
+/// (and EF 3.1's adoption of it, plus EF 3.1's EPD-convention
+/// biogenic-CO2 = 0 split) requires.
+fn cas_origin_factor(
+    cas: &str,
+    origin: FlowOrigin,
+    value: f64,
+    note: &str,
+) -> CharacterizationFactor {
+    CharacterizationFactor {
+        match_on: FactorMatch::CasOrigin {
+            cas: cas.into(),
+            origin,
+        },
+        value,
+        note: Some(note.into()),
+    }
+}
+
 // ---- Factor tables ---------------------------------------------------
 //
 // Each function below returns the characterisation factors for one
@@ -157,11 +178,140 @@ fn cas_factor(cas: &str, value: f64, note: &str) -> CharacterizationFactor {
 // rather than silently returning zero impact.
 
 fn climate_change_factors() -> Vec<CharacterizationFactor> {
-    // TODO: EF 3.1 specifies IPCC AR6 GWP100 for Climate change.
-    // Factor entry will either (a) re-use `crate::standard::ar6_gwp100_factors`
-    // via a shared helper, or (b) duplicate the AR6 table locally so
-    // the EF 3.1 preset is self-contained. Decide at factor-entry time.
-    vec![]
+    // Source: JRC EF 3.1 reference package, ILCD LCIA method dataset
+    // `6209b35f-9447-40b5-b68c-a1099e3674a0.xml` ("Climate change"),
+    // dataSetVersion 01.00.000, dateOfLastRevision 2022-06-17. Model:
+    // IPCC AR6 GWP100 (Forster et al. 2021, WG1 Ch7 T7.15) — same
+    // numerical table as `crate::standard::ipcc_ar6_gwp100`. Indicator
+    // unit: kg CO2-eq.
+    //
+    // Taxonomy pre-check: 217 inventory items, all global scope (no
+    // `<location>` tags), all compartments are air subcompartments
+    // (urban/non-urban/stratosphere/indoor/unspecified). CFs are
+    // uniform across air subcompartments per substance — `Cas` matcher
+    // is sufficient for non-CO2/CH4 species.
+    //
+    // CO2 and CH4 each split three ways via `CasOrigin`:
+    //   - CO2 (fossil)         = 1.0
+    //   - CO2 (biogenic)       = 0.0   ← EPD convention edge case
+    //   - CO2 (land use change) = 1.0
+    //   - CH4 (fossil)         = 29.8
+    //   - CH4 (biogenic)       = 27.0
+    //   - CH4 (land use change) = 29.8  ← AR6 LULUC-as-fossil equivalence
+    //
+    // CO2 (biogenic) = 0 is the EPD-convention edge case: biogenic
+    // CO2 emissions don't count as net positive forcing in EN 15804+A2
+    // GWP100 accounting (carbon-neutrality assumption — the carbon was
+    // sequestered from the atmosphere within the assessment horizon).
+    // This is a *policy* split layered on top of IPCC AR6's
+    // model-level CO2 = 1.0, which is why EF 3.1 ships it but the
+    // bare `ipcc_ar6_gwp100` preset does not. Studies that need the
+    // unsplit IPCC table use AR6; EPDs use EF 3.1.
+    //
+    // CH4 LULUC = 29.8 (= fossil) is the explicit-equivalence entry
+    // that motivated the FlowOrigin taxonomy extension to a 4-value
+    // enum. Without it, LULUC CH4 flows would silently fall through
+    // to no-match — see the AR6 preset doc for the same rationale.
+    //
+    // Note on CAS in JRC reference flows: the EF 3.1 ILCD flow
+    // datasets carry CAS numbers in their backing `<flow>` XML, so
+    // `Cas` / `CasOrigin` matchers resolve correctly through the
+    // ILCD linker (which extracts CAS from `<flowInformation>/<dataSetInformation>/<CASNumber>`).
+    // openLCA bundles likewise. The "CAS not in shortDescription"
+    // surface observation does not affect matching — `FlowMeta::cas`
+    // is populated from the underlying flow file, not the LCIA
+    // method's reference text.
+    //
+    // Seeds (≥6 per the discipline memory):
+    //   - Basic: CO2 (fossil) = 1.0
+    //   - Edge:  CO2 (biogenic) = 0.0  ← the EPD-convention split
+    //   - Edge:  CH4 (LULUC) = 29.8    ← the taxonomy-extension motive
+    //   - Basic: N2O = 273
+    //   - Basic: SF6 = 25_200          ← high-traffic / ranking anchor
+    //   - Ranking 1: CO2 biogenic < CO2 fossil = CO2 LULUC
+    //   - Ranking 2: CH4 biogenic < CH4 fossil = CH4 LULUC
+    vec![
+        // CO2 — three-way origin split (basic + edge biogenic + LULUC).
+        cas_origin_factor(
+            "124-38-9",
+            FlowOrigin::Fossil,
+            1.0,
+            "EF 3.1 CC — CO2 (fossil), reference species (basic seed)",
+        ),
+        cas_origin_factor(
+            "124-38-9",
+            FlowOrigin::Biogenic,
+            0.0,
+            "EF 3.1 CC — CO2 (biogenic) = 0 per EN 15804+A2 carbon-neutrality convention (edge seed)",
+        ),
+        cas_origin_factor(
+            "124-38-9",
+            FlowOrigin::LandUseChange,
+            1.0,
+            "EF 3.1 CC — CO2 (land use change) = fossil-equivalent per EF 3.1 LULUC accounting",
+        ),
+        // CH4 — three-way origin split mirroring AR6.
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::Fossil,
+            29.8,
+            "EF 3.1 CC — CH4 (fossil), IPCC AR6 GWP100",
+        ),
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::Biogenic,
+            27.0,
+            "EF 3.1 CC — CH4 (biogenic), IPCC AR6 GWP100",
+        ),
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::LandUseChange,
+            29.8,
+            "EF 3.1 CC — CH4 (LULUC) = fossil-equivalent (edge seed; motivated FlowOrigin extension)",
+        ),
+        // Origin-agnostic species (one CF per substance across all
+        // air subcompartments — `Cas` matcher).
+        cas_factor(
+            "10024-97-2",
+            273.0,
+            "EF 3.1 CC — N2O (nitrous oxide), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "2551-62-4",
+            25_200.0,
+            "EF 3.1 CC — SF6 (sulphur hexafluoride), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "7783-54-2",
+            17_400.0,
+            "EF 3.1 CC — NF3 (nitrogen trifluoride), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "811-97-2",
+            1_530.0,
+            "EF 3.1 CC — HFC-134a (1,1,1,2-tetrafluoroethane), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "75-46-7",
+            14_600.0,
+            "EF 3.1 CC — HFC-23 (trifluoromethane), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "75-10-5",
+            771.0,
+            "EF 3.1 CC — HFC-32 (difluoromethane), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "75-73-0",
+            7_380.0,
+            "EF 3.1 CC — PFC-14 (tetrafluoromethane, CF4), IPCC AR6 GWP100",
+        ),
+        cas_factor(
+            "76-16-4",
+            12_400.0,
+            "EF 3.1 CC — PFC-116 (hexafluoroethane, C2F6), IPCC AR6 GWP100",
+        ),
+    ]
 }
 
 fn ozone_depletion_factors() -> Vec<CharacterizationFactor> {
@@ -637,6 +787,175 @@ mod tests {
                 ("eutrophication-terrestrial", "mol N-eq"),
             ]
         );
+    }
+
+    // ---- Climate change seeds ---------------------------------------
+    //
+    // CC seeds cover both axes the matcher uses: per-species values
+    // (basic + edge) and the CO2/CH4 origin splits (which are unique
+    // to this category — no other EF 3.1 category needs CasOrigin).
+    // The biogenic-CO2 = 0 entry is the EPD-convention edge that
+    // distinguishes EF 3.1 from the bare AR6 preset; without it,
+    // biogenic CO2 emissions would silently get GWP = 1 and EPDs
+    // would mis-report wood/paper/biomass-derived embedded carbon.
+    // The CH4-LULUC = 29.8 entry is the explicit-equivalence factor
+    // that motivated the FlowOrigin 4-value extension — same
+    // anti-silent-zero rationale as in the AR6 preset.
+
+    fn cc_factors() -> Vec<CharacterizationFactor> {
+        ef_31()
+            .categories
+            .into_iter()
+            .find(|c| c.id == "climate-change")
+            .unwrap()
+            .factors
+    }
+
+    fn cc_cas_origin(cas: &str, origin: FlowOrigin) -> CharacterizationFactor {
+        cc_factors()
+            .into_iter()
+            .find(|f| {
+                matches!(
+                    &f.match_on,
+                    FactorMatch::CasOrigin { cas: c, origin: o } if c == cas && *o == origin
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!("no CC factor for CAS {cas} origin {origin:?}")
+            })
+    }
+
+    fn cc_cas(cas: &str) -> CharacterizationFactor {
+        cc_factors()
+            .into_iter()
+            .find(|f| matches!(&f.match_on, FactorMatch::Cas { cas: c } if c == cas))
+            .unwrap_or_else(|| panic!("no CC factor for CAS {cas}"))
+    }
+
+    #[test]
+    fn ef_31_cc_co2_fossil_basic_seed_value() {
+        // Basic seed: CO2 (fossil) = 1.0 — reference species by
+        // definition. If this drifts, every other CF in the table is
+        // a ratio against the wrong base and the whole category
+        // mis-scales.
+        assert_eq!(cc_cas_origin("124-38-9", FlowOrigin::Fossil).value, 1.0);
+    }
+
+    #[test]
+    fn ef_31_cc_co2_biogenic_is_zero_per_en15804_carbon_neutrality() {
+        // Edge seed: CO2 (biogenic) = 0 — the EN 15804+A2 carbon-
+        // neutrality convention. EPDs that use EF 3.1 must NOT count
+        // biogenic CO2 emissions toward GWP100 (the assumption is
+        // those emissions match prior atmospheric uptake within the
+        // assessment horizon). Distinguishes EF 3.1 from AR6: AR6
+        // ships only `Cas` for CO2 = 1.0, no origin split.
+        assert_eq!(cc_cas_origin("124-38-9", FlowOrigin::Biogenic).value, 0.0);
+    }
+
+    #[test]
+    fn ef_31_cc_co2_lulu_equals_fossil() {
+        // CO2 (land use change) = 1.0 — per EF 3.1 LULUC accounting,
+        // LULUC CO2 is fossil-equivalent. Explicit equivalence (not
+        // a fallback) so the LULUC semantic is visible in the table
+        // and a future bug here is loud, not silent.
+        assert_eq!(
+            cc_cas_origin("124-38-9", FlowOrigin::LandUseChange).value,
+            1.0
+        );
+    }
+
+    #[test]
+    fn ef_31_cc_co2_split_ranking_biogenic_lt_fossil_eq_lulu() {
+        // CO2 ranking sanity: biogenic (0) < fossil (1) = LULUC (1).
+        // This is the EN 15804+A2 EPD shape — a single ranking test
+        // catches matcher bugs that swap two of the three origins
+        // (the most likely class of regression at this layer).
+        let bio = cc_cas_origin("124-38-9", FlowOrigin::Biogenic).value;
+        let fos = cc_cas_origin("124-38-9", FlowOrigin::Fossil).value;
+        let luc = cc_cas_origin("124-38-9", FlowOrigin::LandUseChange).value;
+        assert!(bio < fos, "biogenic CO2 must be < fossil CO2");
+        assert_eq!(fos, luc, "EF 3.1 LULUC CO2 = fossil CO2");
+    }
+
+    #[test]
+    fn ef_31_cc_ch4_lulu_equals_fossil_explicit_equivalence() {
+        // Edge seed: CH4 (LULUC) = 29.8, the value that motivated
+        // the FlowOrigin 4-value extension. Mirrors the AR6 preset's
+        // explicit-equivalence pattern. If this seed disappears, the
+        // LULUC matcher would fall through to no-match (silent zero)
+        // — exactly the failure mode the explicit entry prevents.
+        assert_eq!(
+            cc_cas_origin("74-82-8", FlowOrigin::LandUseChange).value,
+            29.8
+        );
+    }
+
+    #[test]
+    fn ef_31_cc_ch4_split_ranking_biogenic_lt_fossil_eq_lulu() {
+        // CH4 ranking sanity, same shape as CO2 ranking but with the
+        // AR6 numbers (27 < 29.8 = 29.8). Catches the symmetric bug
+        // class on the CH4 species.
+        let bio = cc_cas_origin("74-82-8", FlowOrigin::Biogenic).value;
+        let fos = cc_cas_origin("74-82-8", FlowOrigin::Fossil).value;
+        let luc = cc_cas_origin("74-82-8", FlowOrigin::LandUseChange).value;
+        assert!(bio < fos, "biogenic CH4 must be < fossil CH4");
+        assert_eq!(fos, luc, "EF 3.1 LULUC CH4 = fossil CH4");
+    }
+
+    #[test]
+    fn ef_31_cc_n2o_basic_seed_value() {
+        // Basic seed: N2O = 273 — high-traffic GHG (combustion +
+        // agriculture + industrial). Origin-agnostic single CF.
+        assert_eq!(cc_cas("10024-97-2").value, 273.0);
+    }
+
+    #[test]
+    fn ef_31_cc_sf6_high_potency_anchor_seed_value() {
+        // Basic seed: SF6 = 25_200 — highest GWP100 species in the
+        // shipped set; useful as a ranking anchor (any CC bug that
+        // decimates large values will hit SF6 first and visibly).
+        assert_eq!(cc_cas("2551-62-4").value, 25_200.0);
+    }
+
+    #[test]
+    fn ef_31_cc_matchers_are_cas_or_cas_origin_only() {
+        // CC's matcher mix is intentional and small: only Cas (single
+        // CF per species) or CasOrigin (CO2 + CH4 origin splits).
+        // Any other matcher would be a category-shape bug.
+        for f in cc_factors() {
+            match &f.match_on {
+                FactorMatch::Cas { .. } | FactorMatch::CasOrigin { .. } => {}
+                other => panic!("CC factor has unexpected matcher: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn ef_31_cc_co2_and_ch4_use_cas_origin_other_species_use_cas() {
+        // Structural test: CO2 (124-38-9) and CH4 (74-82-8) must use
+        // CasOrigin (three entries each — fossil + biogenic + LULUC).
+        // All other species must use plain Cas. This catches a class
+        // of bug where someone adds an N2O fossil/biogenic split
+        // without realising EF 3.1 doesn't differentiate.
+        for f in cc_factors() {
+            match &f.match_on {
+                FactorMatch::Cas { cas } => {
+                    assert!(
+                        cas != "124-38-9" && cas != "74-82-8",
+                        "CO2 and CH4 must use CasOrigin (three-way split), got plain Cas for {cas}"
+                    );
+                }
+                FactorMatch::CasOrigin { cas, .. } => {
+                    assert!(
+                        cas == "124-38-9" || cas == "74-82-8",
+                        "CasOrigin reserved for CO2/CH4 in EF 3.1 CC, got {cas}"
+                    );
+                }
+                _ => unreachable!(
+                    "guarded by ef_31_cc_matchers_are_cas_or_cas_origin_only"
+                ),
+            }
+        }
     }
 
     // ---- Acidification seeds ----------------------------------------

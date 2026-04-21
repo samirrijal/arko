@@ -7,6 +7,99 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — EF 3.1 V1 preset registered; Climate change factor data lands; `FlowOrigin` taxonomy extended (2026-04-21)
+
+Closes the 6-of-7 → 7-of-7 gap from earlier the same day and lifts
+EF 3.1 from "factors entered" to "registered preset users can resolve
+through `MethodRegistry::standard()`". Three coupled changes that
+ship together because each depends on the others:
+
+**1. `FlowOrigin` extended from 3 to 4 values** (`D-0016`). The prior
+enum was `Unspecified | Fossil | NonFossil`. The new enum is
+`Unspecified | Fossil | Biogenic | LandUseChange`. `NonFossil →
+Biogenic` rename is part of the same change — "biogenic" is the
+unambiguous EN 15804+A2 / EF 3.1 / IPCC AR6 term, and the rename
+keeps the three-vs-four distinction visible at every call site.
+
+The change closes a latent silent-mis-classification bug: both flow
+parsers ([`engine/io-ilcd-linker/src/flow.rs`](io-ilcd-linker/src/flow.rs)
+and [`engine/io-olca-jsonld/src/model.rs`](io-olca-jsonld/src/model.rs))
+contained an `_ => Unspecified` fall-through for any origin tag they
+did not recognise, including the literal string "land use change". A
+LULUC methane flow would parse to `NonFossil` and silently match the
+biogenic CF (27.0 kg CO2-eq/kg) instead of the LULUC CF (29.8). The
+bug surfaced no error, no warning, no `unmatched_flows` entry — just
+a wrong number. Test-first parser fixes: failing tests written first
+to reproduce the bug as red, then made green by extending the
+classification arm. Parser test files split into per-variant tests
+(`fossil_classifies_as_fossil`,
+`biogenic_and_synonyms_classify_as_biogenic`,
+`land_use_change_classifies_as_land_use_change`) so each variant has
+its own falsifiable witness.
+
+AR6 preset CH4 expanded from 2 to 3 `CasOrigin` factors with explicit
+`LandUseChange = 29.8` (fossil-equivalent per AR6 GWP100 footnote).
+Same anti-silent-zero rationale: an unmatched LULUC CH4 is more
+dangerous than the same flow producing a documented fossil-equivalent
+value. Test renamed `ar6_ch4_is_split_three_ways_with_lulu_as_fossil_equivalent`.
+
+Migration scope: 19 call sites across `engine/core`,
+`engine/io-ilcd-linker`, `engine/io-olca-jsonld`, `engine/methods`,
+and `engine/differential`. Compiler-driven cascade — the rename
+forces the compiler to surface every site, no grep relied upon.
+
+**2. EF 3.1 Climate change factor table populated** (14 factors,
+mixed `CasOrigin` + `Cas`):
+
+- CO2 (124-38-9) — three `CasOrigin` factors: fossil = 1.0,
+  **biogenic = 0.0**, land-use-change = 1.0. The biogenic-CO2 = 0
+  entry is the EN 15804+A2 carbon-neutrality convention: EPDs do
+  not count biogenic CO2 emissions toward GWP100 (the carbon was
+  sequestered from the atmosphere within the assessment horizon).
+  This is a *policy* split layered on top of IPCC AR6's model-level
+  CO2 = 1.0, which is why EF 3.1 ships it but the bare AR6 preset
+  does not. Worth its own seed test
+  (`ef_31_cc_co2_biogenic_is_zero_per_en15804_carbon_neutrality`)
+  because the failure mode (wood/paper/biomass-derived embedded
+  carbon mis-reported) is a high-blast-radius EPD bug.
+- CH4 (74-82-8) — three `CasOrigin` factors mirroring AR6: fossil =
+  29.8, biogenic = 27.0, land-use-change = 29.8.
+- N2O (10024-97-2) = 273, SF6 (2551-62-4) = 25_200, NF3 (7783-54-2)
+  = 17_400, plus HFC-134a, HFC-23, HFC-32, PFC-14 (CF4), PFC-116
+  (C2F6) — all plain `Cas`, all matching AR6 since EF 3.1 CC is
+  IPCC AR6 GWP100.
+
+Source: JRC dataset `6209b35f-9447-40b5-b68c-a1099e3674a0.xml`
+("Climate change"), dataSetVersion 01.00.000, dateOfLastRevision
+2022-06-17. CFs are uniform across air subcompartments per substance
+(no `CasCompartment` needed — same uniformity-per-compartment pattern
+as the other six categories).
+
+10 new CC seed tests added to `ef_31::tests`: per-species basic +
+edge values (CO2 fossil, CO2 biogenic, CO2 LULUC, CH4 LULUC, N2O,
+SF6), two ranking tests for the origin splits (`biogenic < fossil =
+LULUC` for both CO2 and CH4 — catches origin-swap bugs), and two
+matcher-shape invariants (only `Cas` or `CasOrigin` allowed; `CasOrigin`
+reserved for CO2/CH4 — catches a regression where someone adds an
+N2O fossil/biogenic split unaware that EF 3.1 doesn't differentiate).
+
+**3. EF 3.1 registered in `MethodRegistry::standard()`.** The standard
+registry now returns 3 methods (was 2: AR6 + AR5; now also `ef-3.1`
+v1). `MethodRegistry::len()` test bumped from `== 2` to `== 3` with a
+new descriptive assertion message; new `standard_registry_has_ef_31`
+test verifies the lookup path and the 7-category shape. Phase 1 exit
+slate at 3/4 method presets (CML 2001 and ReCiPe 2016 remain).
+
+**Correctness evidence — migration is semantics-preserving.** Both
+parity smokes pass after the taxonomy migration: EF carpet
+(`9.180243685... kg CO2-eq/m²` vs Python reference, max |dev|
+`4.654e-6`) and USDA beef multi-process (`11.234849... kg CO2-eq/kg
+beef LW` vs Python reference, max |dev| `1.776e-15`). Both well within
+the workspace `CrossImpl` tolerance (`eps_abs=1e-9, eps_rel=1e-6`).
+The taxonomy widened without any existing calculation drifting — the
+only behavioural change is that flows that were previously silently
+mis-classified are now correctly classified.
+
 ### Added — EF 3.1 V1 factor data for 6 of 7 EN 15804+A2 core emission categories (2026-04-21)
 
 Factor tables populated in
@@ -126,6 +219,12 @@ author's session memory.
   with the `FlowOrigin` extension session, since the rationale is
   coupled to the taxonomy change.
 - MILESTONES.md entry deferred to the same complete-preset landing.
+
+> **Update (later same day):** all three deferrals closed by the
+> next entry above — CC factor table populated, EF 3.1 registered in
+> `MethodRegistry::standard()`, `D-0016` records the `FlowOrigin`
+> extension that path A required, and the 2026-04-21 MILESTONES
+> entry marks the registry hitting 3/4 Phase 1 presets.
 
 ### Added — `FactorMatch::CasCompartment` variant (2026-04-20)
 

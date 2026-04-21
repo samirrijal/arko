@@ -36,8 +36,9 @@ fn flow(id: &str, name: &str, cas: Option<&str>, origin: FlowOrigin) -> FlowMeta
 #[test]
 fn standard_registry_contains_ipcc_gwp100_and_it_resolves() {
     let reg = MethodRegistry::standard();
-    // v0.0.1 ships AR6 (default) + AR5 (legacy parity).
-    assert_eq!(reg.len(), 2);
+    // v0.1 ships AR6 (default) + AR5 (legacy parity) + EF 3.1
+    // (EN 15804+A2 core).
+    assert_eq!(reg.len(), 3);
     let m = reg
         .lookup(&MethodRef {
             id: "ipcc-ar6-gwp100".into(),

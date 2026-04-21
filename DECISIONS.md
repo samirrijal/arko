@@ -9,6 +9,102 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-21 · `D-0016` — `FlowOrigin` taxonomy extended from 3 to 4 values; `NonFossil` renamed `Biogenic`, `LandUseChange` added
+
+**Context:** The pre-D-0016 `FlowOrigin` enum was three-valued —
+`Unspecified | Fossil | NonFossil` — adopted at AR6 preset time when the
+only origin distinction shipped was AR6's CH4 fossil/non-fossil split
+(29.8 vs 27.0). Starting on **EF 3.1 Climate change** factor entry
+(see `D-0015` for EF 3.1 scope) surfaced a semantic gap: EF 3.1 CC
+distinguishes **three** origin classes for CO2 and CH4 — fossil,
+biogenic, **and land-use-change** — with values that do not collapse:
+
+- CO2: fossil = 1.0, biogenic = 0.0, land-use-change = 1.0
+- CH4: fossil = 29.8, biogenic = 27.0, land-use-change = 29.8
+
+The naming "NonFossil" was already imprecise for AR6 (where it meant
+"biogenic short-loop carbon"), but the imprecision was harmless while
+LULUC was outside the registry's reach. Once EF 3.1 CC enters, the
+imprecision becomes a silent-correctness bug: a methane flow tagged
+"land use change" in an ILCD inventory would parse to `NonFossil` and
+match the biogenic CF (27.0) instead of the LULUC CF (29.8). The
+calculation would not error, would not warn, would not surface in
+`unmatched_flows` — it would just be wrong.
+
+The bug surface was already present in the codebase pre-EF-3.1 even
+without LULUC CFs in any preset: both ILCD and openLCA flow parsers
+contained an `_ => Unspecified` fall-through for any origin tag they
+did not recognise, including the literal string "land use change".
+Audit of `arko_io_ilcd_linker::flow::classify_flow_origin` and the
+mirror in `arko_io_olca_jsonld::model` confirmed the silent
+mis-classification predates this decision; the taxonomy extension
+fixes it.
+
+**Decision:** Extend `FlowOrigin` (and its parallel reader-side enum
+in `arko-io-ilcd-linker`) from three to four variants:
+
+```rust
+pub enum FlowOrigin {
+    Unspecified,
+    Fossil,
+    Biogenic,         // renamed from NonFossil
+    LandUseChange,    // new variant
+}
+```
+
+The `NonFossil → Biogenic` rename is part of the same change. "Biogenic"
+is the unambiguous EN 15804+A2 / EF 3.1 / IPCC AR6 term for short-loop
+biospheric carbon; "non-fossil" was a domain-incorrect umbrella that
+implied LULUC was a kind of biogenic, which contradicts how all three
+standards account for it (LULUC carbon is typically counted *with*
+fossil at GWP100, not with biogenic). Renaming alongside the variant
+add keeps the three-value vs four-value distinction visible at every
+call site rather than letting the new semantics hide behind an old name.
+
+Both flow parsers updated to map "land use change" → `LandUseChange`.
+Test-first: failing parser tests written before the rename, so the
+silent-mis-classification bug was reproduced as a red test before the
+fix made it green. AR6 preset's CH4 also expanded from 2 to 3
+`CasOrigin` factors with explicit `LandUseChange = 29.8`
+(fossil-equivalent per AR6 GWP100 footnote) — same anti-silent-zero
+rationale: an unmatched LULUC CH4 is more dangerous than the same
+flow producing a documented fossil-equivalent value.
+
+**Reasoning:**
+
+- **Domain correctness > backwards-compatibility ergonomics.** The
+  rename touches 19 call sites. Compiler-driven cascade catches them
+  all in one pass; the alternative (deprecating `NonFossil` as an
+  alias for `Biogenic` and adding `LandUseChange` separately) would
+  leave the imprecise name in code permanently for no benefit since
+  the engine has no external consumers yet.
+- **Explicit equivalence > implicit fallback for LULUC = fossil.**
+  Both AR6 and EF 3.1 happen to assign LULUC CH4 the same numerical
+  value as fossil CH4 (29.8). It would be tempting to model LULUC as
+  "fall back to fossil's CF if no LULUC entry exists." Rejected: the
+  fall-back hides the equivalence from code reviewers and from
+  EPD verifiers reading the table; an explicit `LandUseChange`
+  factor with `value = 29.8` and a `// LULUC = fossil-equivalent`
+  comment makes the policy decision visible at the data layer.
+- **Verified semantics-preserving.** The EF carpet parity smoke
+  (`max |dev| = 4.654e-6` against the Python reference) and the USDA
+  beef multi-process LU parity smoke (`max |dev| = 1.776e-15`) both
+  pass after the migration. The taxonomy widened without any existing
+  calculation drifting — the only behavioural change is that flows
+  that were previously silently mis-classified are now correctly
+  classified.
+
+**Reversal condition:** None plausible. A future origin distinction
+the standards bring in (e.g. "blue carbon" oceanic uptake/release)
+would extend the enum to a fifth variant, not revert this one.
+
+**Out of scope for this entry:** EF 3.1 CC factor entry itself, and
+the registration of EF 3.1 in `MethodRegistry::standard()`. Both
+land in the same commit but are scope choices governed by `D-0015`,
+not new decisions.
+
+---
+
 ## 2026-04-20 · `D-0015` — `FactorMatch::CasCompartment` variant added; EF 3.1 V1 scoped to the 7 emission-based EN 15804+A2 core indicators
 
 **Context:** Phase 1 exit slate requires four method presets (AR6
