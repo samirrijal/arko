@@ -7,6 +7,126 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — EF 3.1 V1 factor data for 6 of 7 EN 15804+A2 core emission categories (2026-04-21)
+
+Factor tables populated in
+[`engine/methods/src/ef_31.rs`](methods/src/ef_31.rs) for six of the
+seven EN 15804+A2 core emission indicators: Acidification (AC),
+Ozone depletion (OD), Photochemical ozone formation (POCP),
+Eutrophication freshwater (EU-fw), Eutrophication marine (EU-m), and
+Eutrophication terrestrial (EU-t). Climate change (CC) deliberately
+left as an empty factor list — see "not yet shipped" below.
+
+**Why a multi-category landing rather than one preset commit.** The
+first category entered (Acidification) surfaced a data-point worth
+documenting before moving on, not a blocker: per-species CFs are
+uniform across air subcompartments in the JRC source, so
+`CasCompartment`'s role for AC is air-vs-non-air exclusion rather
+than air-subcompartment distinction. The same uniformity-per-
+compartment pattern held through POCP, EU-fw, EU-m, and EU-t — a
+consistent property of the EF 3.1 pan-European defaults. Future
+category additions (e.g. Particulate Matter in V2) may expose a
+finer-grained subcompartment axis; the existing matcher handles that
+too but will exercise it.
+
+The Climate change category hit a taxonomy gap instead. EF 3.1 CC
+splits CO2 and CH4 across three origin tags — fossil, biogenic,
+land-use-change — with biogenic CO2 = 0 and land-use-change CH4 =
+29.8 (grouped with fossil, not biogenic). The engine's current
+`FlowOrigin` is three-valued (`Unspecified | Fossil | NonFossil`)
+and routes land-use-change methane to `NonFossil`, which would map
+to the biogenic CF (27.0) and produce a silently-wrong result. Path
+A was taken: pause CC, land the six well-covered categories against
+the existing taxonomy, and extend `FlowOrigin` in a separate session
+before CC entry. (Path B, shipping CC with a TODO and fixing the
+taxonomy later, was rejected because the failure mode is silent
+value drift, not a loud `DuplicateMatch`.)
+
+**What changed — per category.**
+
+- **Acidification** (5 factors, CasCompartment on
+  `["emission","air"]`). SO2 = 1.31 mol H+-eq/kg (basic seed), NH3 =
+  3.02 (edge seed), SO3, NO, NO2. Source: JRC dataset
+  `b5c611c6-def3-11e6-bf01-fe55135034f3.xml` dataSetVersion
+  01.04.000, dateOfLastRevision 2022-06-17.
+- **Ozone depletion** (19 factors, plain `Cas`). CFC-11 = 1.0
+  (reference species), CFC-12 = 0.73, HCFC family, Halon-1211,
+  Halon-1301, Halon-2402 = 15.7 (edge seed, highest CF). Source:
+  JRC dataset `b5c629d6-def3-11e6-bf01-fe55135034f3.xml`
+  dataSetVersion 02.00.012, WMO 1999 model. OD chose `Cas` over
+  `CasCompartment` because ODS flows to non-air compartments are
+  physically non-existent — no silent-bug surface from the looser
+  matcher.
+- **POCP** (17 factors, CasCompartment on `["emission","air"]`).
+  NOx + reactive VOCs: ethylene = 1.69 (basic seed), 1,3,5-
+  trimethylbenzene = 2.33 (edge seed, highest CF), butadiene,
+  isoprene, BTEX, aldehydes, alcohols, acetone. Source: JRC
+  dataset `b5c610fe-def3-11e6-bf01-fe55135034f3.xml`, Van Zelm et
+  al. LOTOS-EUROS model. `CasCompartment` chosen here (vs OD's
+  `Cas`) because VOC-to-water is a realistic inventory flow — the
+  matcher acts as a category-scope gate.
+- **Eutrophication, freshwater** (6 factors, CasCompartment on
+  `["emission","water"]` or `["emission","soil"]`). Three P species
+  × two compartments: P (7723-14-0) to water = 1.0 (basic seed,
+  reference species), P to soil = 0.05 (edge seed — same CAS, 20×
+  lower CF). This P-water/P-soil pair is the canonical
+  `CasCompartment` case: the plain `Cas` variant could not
+  represent it without a `DuplicateMatch` collision. Source: JRC
+  dataset `b53ec18f-7377-4ad3-86eb-cc3f4f276b2b.xml`, Struijs 2008
+  CARMEN/EUTREND. Known V1 limit: fresh-vs-sea-water collapse under
+  the `water` prefix — the JRC source itself treats unspecified-
+  water emissions as freshwater-equivalent, so the matcher matches
+  the dataset's own convention. A future `CasRegion` variant would
+  refine this.
+- **Eutrophication, marine** (9 factors, CasCompartment on
+  `["emission","air"]` or `["emission","water"]`). Six CAS-keyed N
+  species: NH3 to water = 0.824 (basic seed), NH3 to air = 0.092
+  (edge seed, same CAS ~9× lower), NH4+, NO3-, NO2-, NO2, NO.
+  Source: JRC dataset `b5c619fa-def3-11e6-bf01-fe55135034f3.xml`
+  dataSetVersion 02.00.010, Struijs 2008. Fresh/sea water CFs are
+  identical in EF 3.1 EU-marine (the CARMEN matrix routes any
+  water emission through the marine zone), so the `water` prefix
+  collapse is physically correct here, not a V1 limit.
+- **Eutrophication, terrestrial** (6 factors, CasCompartment on
+  `["emission","air"]` — air-only category). NH3 = 13.47 mol
+  N-eq/kg (basic seed), NH4+, NO3-, NO2-, NO2 = 4.26, NO = 6.532
+  (edge seed — CAS-axis selectivity against chemically similar NO2).
+  Reference unit is **mol N-eq** (not kg — Seppälä et al. 2006
+  accumulated-exceedance model uses molar equivalents). Source:
+  JRC dataset `b5c614d2-def3-11e6-bf01-fe55135034f3.xml`
+  dataSetVersion 01.02.009.
+
+**What did not change — Climate change stays an empty factor list.**
+The `ef_31()` builder still returns a 7-category method (CC kept in
+the shape as `climate-change` with `factors: vec![]`) so the scope
+contract stays stable. `ef_31_has_seven_categories` still passes.
+The empty CC list will be filled in the same session that extends
+`FlowOrigin` and fixes the `io-ilcd-linker` LULUC methane
+classification.
+
+**Correctness evidence.** 28 tests in the `ef_31::tests` module
+(up from 5 at session start): per-category basic + edge seed value
+tests, ranking tests that exercise structural intuitions (NH3 > SO2
+> NO2 for acidification, mesitylene > propene > methanol for POCP,
+Halon > CFC for ozone depletion, water > soil/air for
+eutrophications), matcher-shape invariant tests that lock each
+category's compartment scope, and the preserved JSON round-trip
+test. Every factor carries an inline `// source: ...` comment
+citing the JRC dataset UUID, dataSetVersion, and dateOfLastRevision
+— applying the factor-table-entry discipline recorded in the
+author's session memory.
+
+**Not yet shipped — registry and verification.**
+
+- `MethodRegistry::standard()` still returns 2 methods (AR6 +
+  AR5). EF 3.1 will be added in the session that lands CC — a
+  6-of-7-categories registry entry is less useful than the complete
+  EN 15804+A2 core set.
+- No DECISIONS.md entry for the path-A choice yet. That will land
+  with the `FlowOrigin` extension session, since the rationale is
+  coupled to the taxonomy change.
+- MILESTONES.md entry deferred to the same complete-preset landing.
+
 ### Added — `FactorMatch::CasCompartment` variant (2026-04-20)
 
 Fifth variant of the flow-matching enum in
