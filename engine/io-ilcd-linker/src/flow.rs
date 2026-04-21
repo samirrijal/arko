@@ -44,22 +44,42 @@ pub enum FlowType {
 /// the flow `<baseName>` as a trailing parenthetical:
 ///
 /// - `methane (fossil)` → `Fossil`
-/// - `methane (biogenic)` → `NonFossil`
-/// - `methane (land use change)` → `NonFossil`
+/// - `methane (biogenic)` → `Biogenic`
+/// - `methane (land use change)` → `LandUseChange`
 ///
 /// The parser ([`classify_flow_origin`]) recognises these and a small
 /// set of defensive synonyms; anything unrecognised falls through to
 /// `Unspecified` rather than guessing.
+///
+/// The 2026-04-21 split of the historical `NonFossil` variant into
+/// `Biogenic` and `LandUseChange` mirrors the change in
+/// `arko_core::meta::FlowOrigin`. Before the split, this parser
+/// classified `methane (land use change)` as `NonFossil` and the
+/// engine routed it through AR6's biogenic CH4 CF (27.0), silently
+/// wrong: AR6 GWP100 treats LULUC CH4 as fossil-equivalent (29.8).
+/// EF 3.1 makes the same distinction explicit. The two-variant
+/// resolution preserves correctness for both methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FlowOrigin {
     /// Carbon released from a geological reservoir (oil, gas, coal,
     /// peat, limestone). AR6 GWP100 CH4 = 29.8.
     Fossil,
-    /// Carbon released from the contemporary biosphere (biogenic
-    /// emissions, land-use-change emissions, short-cycle carbon).
-    /// AR6 GWP100 CH4 = 27.0.
-    NonFossil,
+    /// Carbon released from the contemporary biosphere: biogenic
+    /// emissions, short-cycle carbon, combustion of recent-
+    /// photosynthesis carbon. AR6 GWP100 CH4 = 27.0. **Excludes**
+    /// land-use-change emissions, which carry their own variant
+    /// because their CFs differ across methods (AR6/EF 3.1 group
+    /// LULUC CH4 with fossil at 29.8, not with biogenic at 27.0).
+    Biogenic,
+    /// Carbon released as part of land-use-change accounting:
+    /// deforestation, peatland conversion, soil-carbon stock change.
+    /// Distinct from `Biogenic` because EF 3.1 and AR6 GWP100 group
+    /// LULUC CH4 with fossil CH4 at 29.8, not with biogenic at 27.0.
+    /// Method authors must provide an explicit `LandUseChange` CF if
+    /// they want LULUC flows characterised; the engine does not
+    /// silently fold LULUC into `Fossil` or `Biogenic`.
+    LandUseChange,
     /// Either the flow is not origin-sensitive (CO2, N2O, …) or the
     /// publisher did not classify it. Per spec §matching, AR6's
     /// `CasOrigin` matchers do **not** match `Unspecified` — missing
@@ -286,14 +306,22 @@ fn classify_flow_type(s: &str) -> FlowType {
 /// The basename's trailing parenthetical carries the publisher's
 /// origin classification, e.g. `methane (fossil)` /
 /// `methane (biogenic)` / `methane (land use change)`. Recognised
-/// tags map to `Fossil` / `NonFossil`; anything else (no parenthetical,
-/// unknown vocabulary) falls through to `Unspecified` so that AR6's
-/// matchers surface the gap rather than silently guess.
+/// tags map to `Fossil` / `Biogenic` / `LandUseChange`; anything else
+/// (no parenthetical, unknown vocabulary) falls through to
+/// `Unspecified` so that origin-specific matchers surface the gap
+/// rather than silently guess.
 ///
 /// Comparison is case-insensitive on the inner tag. The recognised
-/// non-fossil synonyms cover the JRC EF / ÖKOBAUDAT / ILCD-network
-/// vocabulary observed in the wild as of v0.0.1; new variants land
-/// here as we encounter them.
+/// vocabulary covers JRC EF / ÖKOBAUDAT / ILCD-network publishers
+/// observed in the wild as of v0.0.1; new variants land here as we
+/// encounter them.
+///
+/// `"non-fossil"` is treated as `Biogenic` for backward compatibility
+/// with publishers that haven't adopted the LULUC distinction —
+/// `non-fossil` historically meant "biogenic", since LULUC is rarely
+/// tagged that way at the publisher layer. `"short cycle"` and
+/// `"from soil or biomass stocks"` are biogenic synonyms in the
+/// publisher vocabulary.
 fn classify_flow_origin(base_name: &str) -> FlowOrigin {
     let trimmed = base_name.trim();
     let Some(open) = trimmed.rfind('(') else {
@@ -310,9 +338,9 @@ fn classify_flow_origin(base_name: &str) -> FlowOrigin {
         "fossil" => FlowOrigin::Fossil,
         "biogenic"
         | "non-fossil"
-        | "land use change"
         | "short cycle"
-        | "from soil or biomass stocks" => FlowOrigin::NonFossil,
+        | "from soil or biomass stocks" => FlowOrigin::Biogenic,
+        "land use change" => FlowOrigin::LandUseChange,
         _ => FlowOrigin::Unspecified,
     }
 }
@@ -334,20 +362,41 @@ mod origin_tests {
     }
 
     #[test]
-    fn biogenic_and_synonyms_are_non_fossil() {
+    fn biogenic_and_synonyms_classify_as_biogenic() {
+        // The pre-2026-04-21 enum collapsed `biogenic`,
+        // `non-fossil`, `short cycle`, and `from soil or biomass
+        // stocks` into one variant alongside `land use change`. The
+        // biogenic synonyms remain together; LULUC was split out
+        // (see `land_use_change_classifies_as_land_use_change`).
         for name in [
             "methane (biogenic)",
-            "methane (land use change)",
             "carbon dioxide (non-fossil)",
             "methane (short cycle)",
             "carbon dioxide (from soil or biomass stocks)",
         ] {
             assert_eq!(
                 classify_flow_origin(name),
-                FlowOrigin::NonFossil,
-                "expected NonFossil for {name}"
+                FlowOrigin::Biogenic,
+                "expected Biogenic for {name}"
             );
         }
+    }
+
+    #[test]
+    fn land_use_change_classifies_as_land_use_change() {
+        // Pre-2026-04-21 this returned `NonFossil` and the engine
+        // routed LULUC methane through AR6's biogenic CH4 CF (27.0)
+        // — silently wrong. AR6 GWP100 and EF 3.1 both treat LULUC
+        // CH4 as fossil-equivalent (29.8). The dedicated variant
+        // forces method presets to make the LULUC semantic explicit.
+        assert_eq!(
+            classify_flow_origin("methane (land use change)"),
+            FlowOrigin::LandUseChange
+        );
+        assert_eq!(
+            classify_flow_origin("Carbon dioxide (land use change)"),
+            FlowOrigin::LandUseChange
+        );
     }
 
     #[test]
@@ -358,7 +407,11 @@ mod origin_tests {
         );
         assert_eq!(
             classify_flow_origin("methane (Biogenic)"),
-            FlowOrigin::NonFossil
+            FlowOrigin::Biogenic
+        );
+        assert_eq!(
+            classify_flow_origin("methane (Land Use Change)"),
+            FlowOrigin::LandUseChange
         );
     }
 

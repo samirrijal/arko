@@ -399,6 +399,6 @@ mod tests {
             .iter()
             .find(|e| e.data_set_internal_id == 3)
             .unwrap();
-        assert_eq!(meth.origin, FlowOrigin::NonFossil);
+        assert_eq!(meth.origin, FlowOrigin::Biogenic);
     }
 }

@@ -366,7 +366,8 @@ fn beef_multi_process_parity_smoke() {
 fn linker_origin_to_core(o: LinkerOrigin) -> CoreFlowOrigin {
     match o {
         LinkerOrigin::Fossil => CoreFlowOrigin::Fossil,
-        LinkerOrigin::NonFossil => CoreFlowOrigin::NonFossil,
+        LinkerOrigin::Biogenic => CoreFlowOrigin::Biogenic,
+        LinkerOrigin::LandUseChange => CoreFlowOrigin::LandUseChange,
         LinkerOrigin::Unspecified => CoreFlowOrigin::Unspecified,
     }
 }

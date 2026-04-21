@@ -237,7 +237,11 @@ mod tests {
             origin: FlowOrigin::Fossil,
         };
         assert!(m.matches(&ch4_flow(FlowOrigin::Fossil)));
-        assert!(!m.matches(&ch4_flow(FlowOrigin::NonFossil)));
+        assert!(!m.matches(&ch4_flow(FlowOrigin::Biogenic)));
+        assert!(
+            !m.matches(&ch4_flow(FlowOrigin::LandUseChange)),
+            "LandUseChange must NOT match a fossil-only factor — exact-match policy applies to all origin variants"
+        );
         assert!(
             !m.matches(&ch4_flow(FlowOrigin::Unspecified)),
             "Unspecified must NOT match a fossil-only factor — that is the whole point of the variant"
@@ -263,7 +267,8 @@ mod tests {
             cas: "74-82-8".into(),
         };
         assert!(m.matches(&ch4_flow(FlowOrigin::Fossil)));
-        assert!(m.matches(&ch4_flow(FlowOrigin::NonFossil)));
+        assert!(m.matches(&ch4_flow(FlowOrigin::Biogenic)));
+        assert!(m.matches(&ch4_flow(FlowOrigin::LandUseChange)));
         assert!(m.matches(&ch4_flow(FlowOrigin::Unspecified)));
     }
 
@@ -383,8 +388,8 @@ mod tests {
     #[test]
     fn cas_compartment_is_origin_agnostic() {
         // Origin is explicitly outside this matcher's axis. A flow
-        // with any FlowOrigin — fossil, non-fossil, unspecified —
-        // matches on (CAS, compartment) alone.
+        // with any FlowOrigin — fossil, biogenic, LULUC, unspecified
+        // — matches on (CAS, compartment) alone.
         let m = FactorMatch::CasCompartment {
             cas: "74-82-8".into(),
             compartment: vec!["emission".into(), "air".into()],
@@ -392,7 +397,9 @@ mod tests {
         let mut flow = ch4_flow(FlowOrigin::Fossil);
         flow.compartment = vec!["emission".into(), "air".into()];
         assert!(m.matches(&flow));
-        flow.origin = FlowOrigin::NonFossil;
+        flow.origin = FlowOrigin::Biogenic;
+        assert!(m.matches(&flow));
+        flow.origin = FlowOrigin::LandUseChange;
         assert!(m.matches(&flow));
         flow.origin = FlowOrigin::Unspecified;
         assert!(m.matches(&flow));

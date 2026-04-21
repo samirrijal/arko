@@ -244,12 +244,17 @@ pub fn normalize_cas(raw: &str) -> String {
 /// comma-separated qualifier:
 ///
 /// - `"Methane, fossil"` → `Fossil`
-/// - `"Methane, biogenic"` → `NonFossil`
-/// - `"Methane, from soil or biomass stocks"` → `NonFossil`
+/// - `"Methane, biogenic"` → `Biogenic`
+/// - `"Methane, land use change"` → `LandUseChange`
+/// - `"Methane, from soil or biomass stocks"` → `Biogenic`
 ///
 /// Anything unrecognised (no trailing comma-qualifier, or an unknown
-/// tag) → `Unspecified` so AR6 matchers surface the gap rather than
-/// silently guessing.
+/// tag) → `Unspecified` so origin-specific matchers surface the gap
+/// rather than silently guessing.
+///
+/// The 2026-04-21 split of the historical `NonFossil` variant into
+/// `Biogenic` and `LandUseChange` is mirrored here from the ILCD
+/// parser. See [`arko_io_ilcd_linker::FlowOrigin`] for the rationale.
 ///
 /// TODO(consolidation): `arko_io_ilcd_linker::classify_flow_origin`
 /// implements the same idea for the parenthetical form
@@ -272,9 +277,9 @@ pub fn classify_flow_origin_from_name(name: &str) -> arko_io_ilcd_linker::FlowOr
         "fossil" => FlowOrigin::Fossil,
         "biogenic"
         | "non-fossil"
-        | "land use change"
         | "short cycle"
-        | "from soil or biomass stocks" => FlowOrigin::NonFossil,
+        | "from soil or biomass stocks" => FlowOrigin::Biogenic,
+        "land use change" => FlowOrigin::LandUseChange,
         _ => FlowOrigin::Unspecified,
     }
 }
@@ -313,10 +318,10 @@ mod tests {
     }
 
     #[test]
-    fn origin_comma_biogenic_is_non_fossil() {
+    fn origin_comma_biogenic_classifies_as_biogenic() {
         assert_eq!(
             classify_flow_origin_from_name("Methane, biogenic"),
-            FlowOrigin::NonFossil
+            FlowOrigin::Biogenic
         );
     }
 
@@ -333,19 +338,38 @@ mod tests {
     }
 
     #[test]
-    fn origin_synonyms_are_non_fossil() {
+    fn origin_biogenic_synonyms_classify_as_biogenic() {
+        // The pre-2026-04-21 grouping kept LULUC in this list. LULUC
+        // is now its own variant
+        // (`origin_comma_land_use_change_classifies_as_land_use_change`).
         for name in [
             "Carbon dioxide, biogenic",
-            "Methane, land use change",
             "Carbon dioxide, from soil or biomass stocks",
             "Carbon dioxide, non-fossil",
+            "Methane, short cycle",
         ] {
             assert_eq!(
                 classify_flow_origin_from_name(name),
-                FlowOrigin::NonFossil,
-                "expected NonFossil for {name}"
+                FlowOrigin::Biogenic,
+                "expected Biogenic for {name}"
             );
         }
+    }
+
+    #[test]
+    fn origin_comma_land_use_change_classifies_as_land_use_change() {
+        // Pre-2026-04-21 this returned `NonFossil` (now `Biogenic`),
+        // which routed LULUC methane through AR6's biogenic CH4 CF
+        // (27.0) — silently wrong by AR6 GWP100 semantics where
+        // LULUC CH4 is fossil-equivalent (29.8).
+        assert_eq!(
+            classify_flow_origin_from_name("Methane, land use change"),
+            FlowOrigin::LandUseChange
+        );
+        assert_eq!(
+            classify_flow_origin_from_name("Carbon dioxide, land use change"),
+            FlowOrigin::LandUseChange
+        );
     }
 
     #[test]
@@ -366,11 +390,15 @@ mod tests {
     fn origin_case_insensitive_tail() {
         assert_eq!(
             classify_flow_origin_from_name("Methane, Biogenic"),
-            FlowOrigin::NonFossil
+            FlowOrigin::Biogenic
         );
         assert_eq!(
             classify_flow_origin_from_name("Methane, FOSSIL"),
             FlowOrigin::Fossil
+        );
+        assert_eq!(
+            classify_flow_origin_from_name("Methane, Land Use Change"),
+            FlowOrigin::LandUseChange
         );
     }
 

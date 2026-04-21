@@ -39,10 +39,15 @@ use arko_core::meta::FlowOrigin;
 /// IPCC AR6 GWP 100-year factors (kg CO2-eq per kg emitted).
 ///
 /// **Default recommendation** for new Arko studies. CH4 is split
-/// fossil vs non-fossil via [`FactorMatch::CasOrigin`]; flows with
-/// `FlowOrigin::Unspecified` will not match either CH4 factor and will
+/// three ways via [`FactorMatch::CasOrigin`]: `Fossil` and
+/// `LandUseChange` both = 29.8, `Biogenic` = 27.0. The
+/// `LandUseChange` entry is explicit equivalence rather than fallback
+/// — AR6 GWP100 treats LULUC CH4 as fossil-equivalent (same
+/// radiative forcing), and the equivalence is made visible in code
+/// rather than left to a silent fallthrough. Flows with
+/// `FlowOrigin::Unspecified` will not match any CH4 factor and will
 /// surface in `CMatrixBuild::unmatched_flows` — by design, to avoid
-/// silently applying the fossil CH4 GWP to an unclassified flow.
+/// silently applying any of the three GWPs to an unclassified flow.
 ///
 /// `(id, version) = ("ipcc-ar6-gwp100", "1")`.
 pub fn ipcc_ar6_gwp100() -> ImpactMethod {
@@ -87,20 +92,26 @@ pub fn ipcc_ar5_gwp100() -> ImpactMethod {
 }
 
 /// AR6 Table 7.15 subset. Values verified against the published table
-/// 2026-04-19:
+/// 2026-04-19; LULUC explicit-equivalence entry added 2026-04-21
+/// alongside the `FlowOrigin` 4-value extension:
 ///
 /// - CO2: `1.0` (reference by definition).
 /// - CH4 **fossil**: `29.8` (AR6 WG1 Ch7 T7.15). Matched via
 ///   `CasOrigin`.
-/// - CH4 **non-fossil**: `27.0` (AR6 WG1 Ch7 T7.15). Matched via
+/// - CH4 **biogenic**: `27.0` (AR6 WG1 Ch7 T7.15). Matched via
 ///   `CasOrigin`.
-/// - N2O: `273` (AR6 WG1 Ch7 T7.15; no fossil/non-fossil split).
+/// - CH4 **land-use-change**: `29.8` (explicit equivalence to fossil
+///   CH4 per AR6 GWP100 semantics — LULUC CH4 has the same
+///   radiative forcing as fossil CH4 in WG1 Ch7). Matched via
+///   `CasOrigin`. Made explicit so the LULUC-as-fossil semantic is
+///   visible in the preset rather than implicit via fallback.
+/// - N2O: `273` (AR6 WG1 Ch7 T7.15; no fossil/biogenic/LULUC split).
 /// - SF6: `25_200`. NF3: `17_400`.
 /// - HFC-134a: `1_530`. HFC-23: `14_600`. HFC-32: `771`.
 /// - CF4 (PFC-14): `7_380`. C2F6 (PFC-116): `12_400`.
 fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
-    // CH4 order matters for the tests that read factors[1] / factors[2];
-    // keep fossil before non-fossil.
+    // CH4 order matters for the tests that read factors[1..4];
+    // keep fossil → biogenic → LULUC.
     vec![
         cas_factor("124-38-9", 1.0, "Carbon dioxide (CO2), AR6 reference"),
         cas_origin_factor(
@@ -111,9 +122,15 @@ fn ar6_gwp100_factors() -> Vec<CharacterizationFactor> {
         ),
         cas_origin_factor(
             "74-82-8",
-            FlowOrigin::NonFossil,
+            FlowOrigin::Biogenic,
             27.0,
-            "Methane (CH4), non-fossil — AR6 WG1 Ch7 T7.15",
+            "Methane (CH4), biogenic — AR6 WG1 Ch7 T7.15",
+        ),
+        cas_origin_factor(
+            "74-82-8",
+            FlowOrigin::LandUseChange,
+            29.8,
+            "Methane (CH4), land-use-change — AR6 GWP100 LULUC-as-fossil equivalence",
         ),
         cas_factor(
             "10024-97-2",
@@ -226,30 +243,34 @@ mod tests {
     }
 
     #[test]
-    fn ar6_ch4_is_split_fossil_and_non_fossil() {
+    fn ar6_ch4_is_split_three_ways_with_lulu_as_fossil_equivalent() {
         let m = ipcc_ar6_gwp100();
-        let fossil = m.categories[0]
-            .factors
-            .iter()
-            .find(|f| {
-                matches!(
-                    &f.match_on,
-                    FactorMatch::CasOrigin { cas, origin: FlowOrigin::Fossil } if cas == "74-82-8"
-                )
-            })
-            .expect("fossil CH4 factor missing");
-        let nonfossil = m.categories[0]
-            .factors
-            .iter()
-            .find(|f| matches!(
-                &f.match_on,
-                FactorMatch::CasOrigin { cas, origin: FlowOrigin::NonFossil } if cas == "74-82-8"
-            ))
-            .expect("non-fossil CH4 factor missing");
-        assert_eq!(fossil.value, 29.8, "AR6 WG1 Ch7 T7.15 fossil CH4 = 29.8");
+        let factor_for = |target: FlowOrigin| {
+            m.categories[0]
+                .factors
+                .iter()
+                .find(|f| {
+                    matches!(
+                        &f.match_on,
+                        FactorMatch::CasOrigin { cas, origin } if cas == "74-82-8" && *origin == target
+                    )
+                })
+                .unwrap_or_else(|| panic!("CH4 factor for {target:?} missing"))
+        };
         assert_eq!(
-            nonfossil.value, 27.0,
-            "AR6 WG1 Ch7 T7.15 non-fossil CH4 = 27.0"
+            factor_for(FlowOrigin::Fossil).value,
+            29.8,
+            "AR6 WG1 Ch7 T7.15 fossil CH4 = 29.8"
+        );
+        assert_eq!(
+            factor_for(FlowOrigin::Biogenic).value,
+            27.0,
+            "AR6 WG1 Ch7 T7.15 biogenic CH4 = 27.0"
+        );
+        assert_eq!(
+            factor_for(FlowOrigin::LandUseChange).value,
+            29.8,
+            "AR6 GWP100 LULUC CH4 = fossil CH4 = 29.8 (explicit equivalence)"
         );
     }
 

@@ -335,12 +335,12 @@ fn l1_coupled_two_process() -> TestVector {
 }
 
 /// L1 — AR6 CH4 origin split. Same shape as `l1_two_process_independent`
-/// but the CH4 flow carries `FlowOrigin::NonFossil`. Under AR6 WG1
-/// Ch7 T7.15 the non-fossil CH4 GWP is `27.0`, so h = [0.1 · 27.0] = [2.70].
+/// but the CH4 flow carries `FlowOrigin::Biogenic`. Under AR6 WG1
+/// Ch7 T7.15 the biogenic CH4 GWP is `27.0`, so h = [0.1 · 27.0] = [2.70].
 ///
 /// Point of the vector: exercise the `FactorMatch::CasOrigin`
 /// discrimination end-to-end. An engine that confuses fossil and
-/// non-fossil CH4 will silently return `2.98` (the fossil answer)
+/// biogenic CH4 will silently return `2.98` (the fossil answer)
 /// on this study and fail the parity check.
 fn l1_ch4_non_fossil_origin_split() -> TestVector {
     let mut a = TriMat::new((2, 2));
@@ -350,10 +350,10 @@ fn l1_ch4_non_fossil_origin_split() -> TestVector {
 
     let mut b = TriMat::new((2, 2));
     b.add_triplet(0, 0, 2.0); // CO2 from p0 (unused in this vector).
-    b.add_triplet(1, 1, 0.1); // non-fossil CH4 from p1.
+    b.add_triplet(1, 1, 0.1); // biogenic CH4 from p1.
     let biosphere: SparseMatrix = b.to_csr();
 
-    // C: CO2=1, non-fossil CH4=27.0 per AR6 WG1 Ch7 T7.15.
+    // C: CO2=1, biogenic CH4=27.0 per AR6 WG1 Ch7 T7.15.
     let mut c = TriMat::new((1, 2));
     c.add_triplet(0, 0, 1.0);
     c.add_triplet(0, 1, 27.0);
@@ -392,12 +392,12 @@ fn l1_ch4_non_fossil_origin_split() -> TestVector {
             origin: FlowOrigin::Unspecified,
         },
         FlowMeta {
-            id: "ch4_non_fossil".into(),
+            id: "ch4_biogenic".into(),
             name: "Methane".into(),
             unit: Unit::new("kg"),
             compartment: vec!["emission".into(), "air".into()],
             cas: Some("74-82-8".into()),
-            origin: FlowOrigin::NonFossil,
+            origin: FlowOrigin::Biogenic,
         },
     ];
 

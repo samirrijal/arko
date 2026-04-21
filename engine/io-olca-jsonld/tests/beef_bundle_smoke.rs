@@ -27,7 +27,7 @@
 //!   `defaultProvider` edges pointing at `9f9e378b…`, `ac2816ed…`, and
 //!   `efa8b1d9…`.
 //! - `olca_to_typed_column` succeeds on every process.
-//! - Methane-biogenic is classified `FlowOrigin::NonFossil`.
+//! - Methane-biogenic is classified `FlowOrigin::Biogenic`.
 //! - The zero-padded CAS `000074-82-8` is trimmed to `74-82-8`.
 //! - No exchange surfaces a dangling `defaultProvider`.
 
@@ -129,7 +129,7 @@ fn beef_bundle_end_to_end_structural_smoke() {
     }
 
     // 5. Methane-biogenic flow carries zero-padded CAS → trimmed, and
-    //    origin classifies as NonFossil.
+    //    origin classifies as Biogenic.
     let meth = bundle.load_flow(METHANE_BIOGENIC_FLOW).expect("load meth");
     assert_eq!(
         meth.cas.as_deref(),
@@ -141,6 +141,6 @@ fn beef_bundle_end_to_end_structural_smoke() {
         .iter()
         .find(|e| e.flow_uuid == METHANE_BIOGENIC_FLOW)
         .expect("methane-biogenic exchange present on finishing column");
-    assert_eq!(meth_exchange.origin, FlowOrigin::NonFossil);
+    assert_eq!(meth_exchange.origin, FlowOrigin::Biogenic);
     assert_eq!(meth_exchange.flow_type, FlowType::Elementary);
 }

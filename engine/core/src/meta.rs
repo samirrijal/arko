@@ -71,11 +71,30 @@ pub enum AllocationMode {
 /// which is why `Unspecified` is the default — existing fixtures and
 /// JSON blobs continue to round-trip unchanged.
 ///
+/// EF 3.1 — and any LCIA method that splits LULUC from biogenic —
+/// needs a third active variant: AR6 WG1 Ch7 T7.15 reports CH4-fossil
+/// = 29.8 and CH4-biogenic = 27.0, but EF 3.1 (and the underlying AR6
+/// semantics for GWP100) groups land-use-change CH4 with fossil CH4
+/// at 29.8, *not* with biogenic at 27.0. A 3-valued
+/// `Unspecified | Fossil | NonFossil` enum was forced to choose: it
+/// classified LULUC as `NonFossil` (since it isn't fossil) and silently
+/// produced the wrong CF for any LULUC methane flow under EF 3.1. The
+/// 4th variant `LandUseChange` resolves that. The 2026-04-21 rename
+/// `NonFossil → Biogenic` makes the meaning of the existing variant
+/// explicit rather than negative, since "non-fossil" was an umbrella
+/// that LULUC also fit.
+///
 /// Match policy (see `arko_methods::FactorMatch::CasOrigin`):
 /// an origin-specific matcher requires an **exact** origin match; a
 /// flow with `Unspecified` origin will not silently inherit a
 /// fossil-only factor. That surfaces as a
 /// `CMatrixBuild::unmatched_flows` entry rather than a wrong number.
+/// The same exact-match policy extends to `LandUseChange`: a method
+/// preset that does not provide a `LandUseChange` CF will leave LULUC
+/// flows unmatched rather than silently inheriting `Fossil` or
+/// `Biogenic`. Method authors who want LULUC to fold into a different
+/// origin's CF must say so explicitly by adding a `LandUseChange`
+/// factor with the chosen value (see AR6 preset's CH4 entries).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FlowOrigin {
@@ -84,9 +103,19 @@ pub enum FlowOrigin {
     Unspecified,
     /// Emitted from fossil-carbon feedstock (coal, oil, natural gas).
     Fossil,
-    /// Emitted from biogenic or other non-fossil sources (landfill,
-    /// livestock, wetland, combustion of recent-photosynthesis carbon).
-    NonFossil,
+    /// Emitted from contemporary biogenic carbon: landfill,
+    /// livestock, wetland, combustion of recent-photosynthesis
+    /// carbon. AR6 GWP100 CH4 = 27.0. *Excludes* land-use-change
+    /// emissions, which carry their own variant.
+    Biogenic,
+    /// Emitted as part of land-use-change accounting: deforestation,
+    /// peatland conversion, soil-carbon stock change. Distinct from
+    /// `Biogenic` because EF 3.1 (and the underlying AR6 semantics)
+    /// groups LULUC CH4 with fossil CH4 at 29.8, not with biogenic
+    /// CH4 at 27.0. Method presets that do not distinguish LULUC
+    /// must provide an explicit `LandUseChange` CF; see the AR6
+    /// preset's CH4 entries for the explicit-equivalence pattern.
+    LandUseChange,
 }
 
 impl FlowOrigin {

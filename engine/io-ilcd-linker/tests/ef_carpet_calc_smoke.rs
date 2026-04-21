@@ -288,7 +288,7 @@ fn ef_carpet_calc_smoke() {
         .count();
     let origin_non_fossil = flows
         .iter()
-        .filter(|f| matches!(f.origin, FlowOrigin::NonFossil))
+        .filter(|f| matches!(f.origin, FlowOrigin::Biogenic))
         .count();
     println!(
         "FlowMeta built:  {} elementary flows ({} with CAS, {} without) in {:.2}s",
@@ -433,7 +433,8 @@ fn ef_carpet_calc_smoke() {
 fn linker_origin_to_core(o: LinkerOrigin) -> FlowOrigin {
     match o {
         LinkerOrigin::Fossil => FlowOrigin::Fossil,
-        LinkerOrigin::NonFossil => FlowOrigin::NonFossil,
+        LinkerOrigin::Biogenic => FlowOrigin::Biogenic,
+        LinkerOrigin::LandUseChange => FlowOrigin::LandUseChange,
         LinkerOrigin::Unspecified => FlowOrigin::Unspecified,
     }
 }

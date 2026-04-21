@@ -337,7 +337,8 @@ fn ef_carpet_parity_smoke() {
 fn linker_origin_to_core(o: LinkerOrigin) -> FlowOrigin {
     match o {
         LinkerOrigin::Fossil => FlowOrigin::Fossil,
-        LinkerOrigin::NonFossil => FlowOrigin::NonFossil,
+        LinkerOrigin::Biogenic => FlowOrigin::Biogenic,
+        LinkerOrigin::LandUseChange => FlowOrigin::LandUseChange,
         LinkerOrigin::Unspecified => FlowOrigin::Unspecified,
     }
 }

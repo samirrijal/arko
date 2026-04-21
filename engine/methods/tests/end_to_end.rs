@@ -259,7 +259,7 @@ fn ar5_and_ar6_agree_where_they_should_and_disagree_where_they_should() {
 
     let mut b = TriMat::new((2, 1));
     b.add_triplet(0, 0, 0.06); // fossil CH4
-    b.add_triplet(1, 0, 0.04); // non-fossil CH4
+    b.add_triplet(1, 0, 0.04); // biogenic CH4
     let biosphere: SparseMatrix = b.to_csr();
 
     let flows = vec![
@@ -270,10 +270,10 @@ fn ar5_and_ar6_agree_where_they_should_and_disagree_where_they_should() {
             FlowOrigin::Fossil,
         ),
         flow(
-            "f_ch4_nonfossil",
-            "CH4 non-fossil",
+            "f_ch4_biogenic",
+            "CH4 biogenic",
             Some("74-82-8"),
-            FlowOrigin::NonFossil,
+            FlowOrigin::Biogenic,
         ),
     ];
 
