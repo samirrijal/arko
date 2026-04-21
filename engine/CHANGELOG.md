@@ -7,6 +7,171 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — CML-IA baseline v4.8 V1 preset registered; 4/4 standard-registry method presets (2026-04-22)
+
+Closes the Phase-1 method-preset exit criterion. `MethodRegistry::standard()`
+now ships **four** presets — AR6 (default for new climate studies),
+AR5 (legacy parity, *with* climate-carbon feedback), EF 3.1
+(EN 15804+A2 mandatory-core, shippable-EPD floor), and **CML-IA
+baseline v4.8** (legacy-EPD verification + side-by-side with EF 3.1,
+GWP100 *without* climate-carbon feedback). Seven coupled changes
+landing in one commit because the matcher work, the factor entry,
+the registry registration, and the source-attribution discipline
+together constitute one shippable preset.
+
+**1. New `engine/methods/src/cml_ia.rs` module** — public
+`cml_ia()` returning `ImpactMethod` keyed `("cml-ia-baseline", "4.8")`.
+Version key matches the Leiden release verbatim (4.8), not Arko's
+internal V1/V2 staging — a future V2 that adds toxicity or regional
+variants is still derived from CML-IA v4.8 source data and would
+ship at the same `(id, version)` key with a different `name`, never
+reissued with a different factor table. Module-level doc preamble
+(~80 lines) explains the V1 EN 15804+A2-alignment scope, the source-
+comment discipline, the without-vs-with-feedback distinction, and
+references the seven model citations (Guinée 2002, Oers 2001/2016,
+WMO 2003, Huijbregts 1999, Heijungs 1992, Jenkin/Hayman 1999,
+Derwent 1998).
+
+**2. Seven category factor tables populated** from direct inspection
+of `CML-IA_aug_2016.xls` sheet "characterisation factors":
+
+- `gwp100` — 13 species, plain `Cas`. CO2 = 1.0, CH4 = 28 (vs
+  AR5-with-feedback 30), N2O = 265 (vs 273), SF6 = 23_500 (vs
+  25_200), plus NF3, HFC-23/-134a/-32, CFC-11/-12/-113, PFC-14
+  (CF4), PFC-116 (C2F6). Per-factor source comments cite col 14,
+  the IPCC-2013-without-feedback model variant, and the
+  with-feedback Arko equivalent so the difference is documented at
+  every site (anti-"helpful fix" guard).
+- `ozone-depletion` — 14 species, plain `Cas`. CFC-11 = 1.0
+  (reference), Halon-1301 = 12.0 (highest in CML-IA — note: differs
+  from EF 3.1's WMO-1999 ranking where Halon-2402 leads at 15.7).
+  The WMO 2003 vs WMO 1999 source-package difference shows up as a
+  ranking shuffle on the high-CF tail.
+- `photochemical-ozone-formation` — 17 species,
+  `CasCompartment`/air-only. Reference is **ethylene** (74-85-1 =
+  1.0) — CML uses `kg ethylene-eq`, not `kg NMVOC-eq` like EF 3.1.
+  Side-by-side studies will see substantially different absolute
+  POCP scores between the two presets; this is the unit-of-account
+  difference, not a bug.
+- `acidification` — 7 species, `CasCompartment`/air-only. Reference
+  is SO2 = 1.2 (NOT 1.0 — the avg-Europe-total Huijbregts variant
+  carries fate weighting on the reference). NH3 = 1.6 (highest CF).
+- `eutrophication` — 13 species, plain `Cas`. **Compartment-uniform
+  per substance** — CML's "fate not incl." baseline doesn't vary
+  CFs across air/water/soil compartments. Single combined category
+  (P + N together in PO4-eq), unlike EF 3.1's three-way split into
+  freshwater/marine/terrestrial. Phosphate = 1.0 reference, P =
+  3.06 (highest single-species), full N-bearing set (NH3, NH4+,
+  N2O, N2, NO3-, HNO3, NO2, NO, NOx, H3PO4).
+- `adp-elements` — 11 high-traffic metals,
+  `CasCompartment`/`["resource"]` prefix (single-element compartment
+  vs the two-element `["emission","air"]` shape). Sb = 1.0 reference,
+  Au = 52.04250371165428 (full 14-significant-digit precision
+  preserved verbatim per factor-table-entry discipline; rounding
+  this to 52.04 in a "clean up trailing digits" PR would silently
+  lose source-fidelity at the version-key level).
+- `adp-fossil` — 5 fossil resources, **hybrid matcher** (the only
+  V1 category that mixes `Cas` and `NameAndCompartment` within one
+  factor list). Real CAS for natural gas (8006-14-2 = 38.84 MJ/m3)
+  and crude oil (8012-95-1 = 41.87); literal-label
+  `NameAndCompartment` for "coal hard" (27.91), "coal soft, lignite"
+  (13.96), and the generic "fossil fuel" reference (1.0). Driven
+  by source-data convention, not taste. Witnessed by a dedicated
+  seed test (`cml_ia_adpf_matchers_are_hybrid_cas_or_name_with_resource_prefix`)
+  that asserts both branches are present.
+
+**3. 38 new seed tests** in `cml_ia::tests`. Per category: ≥1 basic
+seed (reference species or canonical anchor), ≥1 edge seed (highest
+CF or matcher-shape edge), ≥1 ranking invariant (catches wholesale
+table swaps), and 1 matcher-shape invariant (catches matcher-type
+drift). The GWP100 cluster is the largest (8 tests) because the
+without-vs-with-feedback split is the highest-blast-radius
+silent-correctness surface. Method-shape tests at the top (id +
+version + name + 7 categories + 7 unit strings) lock the public
+contract.
+
+**4. `MethodRegistry::standard()` registers CML-IA fourth**, after
+EF 3.1. Test rename: `standard_registry_ships_ar5_ar6_and_ef_31`
+→ `standard_registry_ships_ar5_ar6_ef31_and_cml_ia` with assertion
+`r.len() == 3` → `r.len() == 4`. New test
+`standard_registry_has_cml_ia_baseline` asserts the lookup path
+resolves and the GWP100 category id + unit are present. The pre-
+existing integration test in `tests/end_to_end.rs` bumped from
+`reg.len(), 3` → `reg.len(), 4` with an updated comment naming all
+four presets.
+
+**5. `engine/methods/src/lib.rs` preamble updated** — removed the
+"EF 3.1 ships with empty factor lists; data entry is a separate
+landing" stale text (EF 3.1 factors landed with `D-0015`/`D-0016`)
+and added a CML-IA bullet pointing at `D-0017` and the license doc.
+Module declaration `pub mod cml_ia;` added in alphabetical position.
+
+**6. License analysis doc** at
+[`docs/licenses/cml-ia-leiden.md`](../docs/licenses/cml-ia-leiden.md)
+— characterises the gratis-with-no-explicit-license posture honestly,
+reproduces the source disclaimer verbatim, names the citation form
+(with the v4.5→v4.8 row drift Leiden never updated), enumerates
+what is *missing* from the source (commercial-use, redistribution,
+attribution, term, patent/trademark, choice-of-law all silent),
+documents Arko's 4-point rationale for V1 redistribution (factual
+data; different selection/arrangement; gratis-with-no-prohibition;
+attribution preserved), and lays out commercial-scale requirements
+(explicit grant via Leiden outreach, Phase 2-3 task). Per-factor
+source-comment template formalised in the doc, including the
+GWP100-specific without-feedback note.
+
+**7. `DECISIONS.md` entry `D-0017`** records the V1 scope rationale
+including: the four scope corrections that the spreadsheet
+inspection surfaced (GWP100 split, AP avg-Europe variant, EP
+compartment-uniformity, toxicity-in-baseline-but-deferred); the
+hybrid-matcher rationale for ADP-fossil; the EU sui generis Database
+Right open question; and the V2 expansion plan.
+
+**Compartment-wiring caveat (honest Phase-1-exit state).** CML's
+compartment-keyed categories (POCP, AP, ADP-elements, half of
+ADP-fossil) compile and register correctly and pass their
+matcher-shape invariant tests, but they only bind to real flow rows
+once the bridge layer extracts compartment from process exchanges
+into `FlowMeta::compartment` — same caveat that applied to EF 3.1's
+AC, POCP, EU-fw/m/t when those landed. Both ILCD and openLCA
+readers populate `FlowMeta::compartment` as `Vec::new()` today;
+extending the readers with compartment-extraction is a separate
+landing (Phase 1 wiring polish, not scope-blocking the CML preset).
+The categories that use plain `Cas` (CML's GWP100, ODP, EP) bind
+fully today since they have no compartment requirement.
+
+**Cross-preset numerical-divergence notes (intentional, not bugs).**
+Side-by-side studies that run AR5 and CML-IA's GWP100 on the same
+inventory will see divergent numbers because the factor tables differ
+by the climate-carbon-feedback policy choice — Arko's `ipcc-ar5-gwp100`
+ships with-feedback values (CH4 = 30, N2O = 273, SF6 = 25_200) per
+the AR5 mainline table; CML's `cml-ia-baseline` GWP100 ships
+without-feedback values (CH4 = 28, N2O = 265, SF6 = 23_500) per the
+CML construction convention. Both are correct against their
+respective reference documents. A divergence-witness end-to-end test
+across the two presets is *not* added in this commit because it
+would require a fresh study fixture; it can land as a follow-up if
+a real-world bug surfaces that conflates the two.
+
+Source-of-truth file inventory:
+
+- [`engine/methods/src/cml_ia.rs`](methods/src/cml_ia.rs) — new
+- [`engine/methods/src/lib.rs`](methods/src/lib.rs) — preamble
+  updated, module declaration added
+- [`engine/methods/src/registry.rs`](methods/src/registry.rs) —
+  `standard()` registers fourth preset; assertion bumped 3→4;
+  new lookup test for `cml-ia-baseline`
+- [`engine/methods/tests/end_to_end.rs`](methods/tests/end_to_end.rs)
+  — registry-len assertion bumped 3→4
+- [`docs/licenses/cml-ia-leiden.md`](../docs/licenses/cml-ia-leiden.md)
+  — new
+- [`DECISIONS.md`](../DECISIONS.md) — `D-0017` entry
+- [`MILESTONES.md`](../MILESTONES.md) — 2026-04-22 entry
+
+Test summary: `cargo test -p arko-methods --lib` → 124 passed
+(38 new CML-IA + 86 pre-existing); `cargo test -p arko-methods
+--test end_to_end` → 6 passed.
+
 ### Added — EF 3.1 V1 preset registered; Climate change factor data lands; `FlowOrigin` taxonomy extended (2026-04-21)
 
 Closes the 6-of-7 → 7-of-7 gap from earlier the same day and lifts

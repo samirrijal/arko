@@ -8,21 +8,24 @@
 //! [`build_c_matrix`] takes `(method, flows)` and produces the sparse
 //! `C` matrix + `ImpactMeta` list that a `Study` requires.
 //!
-//! The factor table is intentionally scoped. v0.0.1 ships:
+//! The factor table is intentionally scoped. The standard registry
+//! ships:
 //!
 //! - [`standard::ipcc_ar6_gwp100`] — default recommendation for new
 //!   studies (single-category GWP100 per AR6 WG1 Ch7 Table 7.15).
 //! - [`standard::ipcc_ar5_gwp100`] — legacy-verification parity for
-//!   EPDs authored before the AR6 migration.
+//!   EPDs authored before the AR6 migration. **With** climate-carbon
+//!   feedback (CH4 = 30, N2O = 273, SF6 = 25_200).
 //! - [`ef_31::ef_31`] — EF 3.1 V1, the 7 emission-based core
-//!   indicators of EN 15804+A2 (shippable-EPD floor). Scaffold
-//!   landed 2026-04-21 with the 7-category shape and empty factor
-//!   lists; factor data entry is a separate landing against the
-//!   JRC EF 3.1 CF spreadsheet. Scope rationale: `DECISIONS.md`
-//!   entry `D-0015`.
+//!   indicators of EN 15804+A2 (shippable-EPD floor). Scope rationale:
+//!   `DECISIONS.md` entry `D-0015`.
+//! - [`cml_ia::cml_ia`] — CML-IA baseline v4.8, EN 15804+A2-aligned
+//!   subset (7 categories: GWP100 *without* feedback, ODP, POCP, AP,
+//!   EP, ADP-elements, ADP-fossil). Legacy-EPD verification preset
+//!   plus side-by-side with EF 3.1. Scope rationale: `DECISIONS.md`
+//!   entry `D-0017`. License analysis: `docs/licenses/cml-ia-leiden.md`.
 //!
-//! CML 2001 and ReCiPe 2016 Midpoint are the planned Phase-1-exit
-//! additions.
+//! ReCiPe 2016 Midpoint is the remaining planned Phase-1-exit addition.
 //!
 //! # Matching semantics
 //!
@@ -56,6 +59,7 @@
 //!   datasets where CAS was lost in translation.
 
 pub mod builder;
+pub mod cml_ia;
 pub mod ef_31;
 pub mod method;
 pub mod registry;

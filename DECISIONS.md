@@ -9,6 +9,184 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-22 · `D-0017` — CML-IA baseline V1 scoped to the EN 15804+A2-aligned subset; toxicity, regional variants, and POCP low-NOx deferred
+
+**Context:** `D-0011` made Arko the primary product; `D-0015` set the
+EN 15804+A2-aligned-subset framing for EF 3.1 V1 (mandatory-core only,
+toxicity deferred); `D-0016` extended the taxonomy to support EF 3.1
+CC's biogenic/LULUC origin splits. CML-IA baseline (Leiden CML, v4.8,
+August 2016) was named the fourth Phase-1 method preset, the second
+non-climate one, and Arko's first legacy-EPD verification method.
+CML-IA predates EN 15804+A2 by more than a decade and was a direct
+ancestor of EF 3.1's category set; it remains the most-cited LCIA
+method in pre-2020 European EPDs. Picking the V1 scope required
+choosing which of CML-IA's many baseline categories to ship and how
+to handle the methodological differences from EF 3.1 (which had
+already shipped at `D-0015`/`D-0016`).
+
+The taxonomy-axis check ran first per the preset-scoping discipline.
+CML-IA's CF structure was inspected via direct inspection of
+`CML-IA_aug_2016.xls`, sheet "characterisation factors". Findings:
+
+1. **No `CasRegion` axis required for V1** — all shipped categories
+   use a single pan-European-default CF set. The spreadsheet ships
+   per-country variants for AP and POCP; V1 ships only the
+   pan-European total, defers per-country to a future `CasRegion`
+   matcher. (Open: ReCiPe 2016 may force `CasRegion` on regionalised
+   midpoints — the same deferral pattern would absorb it.)
+2. **No new `FactorMatch` variant required** — the existing 5
+   variants (`Cas`, `CasOrigin`, `CasCompartment`, `FlowId`,
+   `NameAndCompartment`) cover every CML-IA V1 category. The only
+   surprise was ADP-fossil (see point 4).
+3. **No `FlowOrigin` extension required** — CML-IA baseline predates
+   the EN 15804+A2 carbon-neutrality convention. CO2 has a single
+   CF of 1.0 regardless of provenance; CH4 has a single CF
+   regardless of origin. Origin splits are an EF 3.1 / EPD-policy
+   layer, not a CML-IA property.
+4. **ADP-fossil ships a hybrid matcher.** Source data uses real CAS
+   for natural gas (8006-14-2) and crude oil (8012-95-1) but
+   literal-label identifiers ("coal hard", "coal soft", "fossil
+   fuel") for the other three fossil resources. V1 honours this
+   mixed convention via mixed `Cas` + `NameAndCompartment` matchers
+   within one factor list. ADP-fossil is the only V1 category that
+   ships a hybrid matcher — driven by source-data structure, not a
+   taste choice.
+
+Direct inspection of the spreadsheet also surfaced four scope
+corrections from the initial reading-by-headers assumption:
+
+- **GWP100 in CML uses IPCC 2013 *without* climate-carbon feedback,**
+  whereas Arko's existing `ipcc-ar5-gwp100` preset uses the
+  with-feedback values (CH4 = 30 vs CML's 28; N2O = 273 vs 265;
+  SF6 = 25_200 vs 23_500). The two AR5-derived presets are
+  intentionally distinct factor tables and per-factor source
+  comments cite this each time so the difference does not
+  accidentally get "fixed" toward each other.
+- **Acidification baseline is the average-Europe-total Huijbregts
+  variant** (col 60 in the source spreadsheet), not the simpler
+  non-regional one. Reference species is SO2 with CF = 1.2 (NOT
+  1.0) — the average-Europe model carries fate weighting on the
+  reference. Per-country variants exist (col 64+) and are deferred.
+- **Eutrophication is compartment-uniform per substance** in
+  CML-IA's "fate not incl." baseline (col 62). The matcher choice
+  is `Cas`, not `CasCompartment` — the source data does not vary
+  CFs across air/water/soil compartments for any P or N species.
+  This is the matcher-shape difference from EF 3.1's three-way EP
+  split (which ships compartment-keyed CFs because EF 3.1 includes
+  fate models).
+- **Toxicity (HTP, FAETP, MAETP, TETP) is in CML-IA baseline** at
+  USES-LCA infinity-time-horizon CFs. V1 omits these even though
+  they are nominally part of "the baseline" because the EN 15804+A2
+  mandatory-core set excludes toxicity, and shipping USES-LCA-derived
+  CFs at V1 risks propagating known criticisms (Hauschild,
+  Pennington 2002) into Arko-stamped numbers without independent
+  factor-value seeds. Toxicity is deferred to V2 alongside the EF
+  3.1 toxicity expansion — same scope-discipline pattern.
+
+**Decision:** Ship `("cml-ia-baseline", "4.8")` with seven
+EN 15804+A2-aligned categories: GWP100, ozone-depletion,
+photochemical-ozone-formation (high-NOx), acidification (avg-Europe
+total A&B), eutrophication (combined P+N, fate not incl.),
+ADP-elements (ultimate-reserves), ADP-fossil (hybrid matcher).
+Method `name` field is `"CML-IA baseline (Leiden, v4.8)"`. Indicator
+units follow the source: `kg CO2-eq`, `kg CFC-11-eq`, `kg
+ethylene-eq` (NOT NMVOC-eq), `kg SO2-eq`, `kg PO4-eq`, `kg Sb-eq`,
+`MJ`. Per-factor source comments cite source file + sheet + column +
+model-variant header + substance row, with an extra line for GWP100
+factors noting the without-vs-with-feedback split.
+
+V2 expansion will likely include: the toxicity quartet (HTP, FAETP,
+MAETP, TETP) per the EN 15804+A2 optional-reporting set; per-country
+AP and POCP variants behind a `CasRegion` matcher; and the POCP
+low-NOx variant for studies in NOx-limited atmospheric regimes. None
+of these block Phase 1 exit.
+
+**Reasoning:**
+
+- **Legacy-EPD verification is a real Phase-1 use-case, not just
+  scope padding.** Pre-2020 European EPDs are dominated by CML-IA
+  baseline citations. Without a CML-IA preset, Arko cannot verify
+  those numbers, which is a hard requirement for any consultancy
+  workflow that touches an existing EPD library. The scope choice
+  ("EN 15804+A2-aligned subset of CML-IA baseline") makes the
+  preset specifically useful for *modern-format-meets-legacy-method*
+  verification — the highest-traffic legacy-EPD shape.
+- **Side-by-side with EF 3.1 is the V1 differentiator.** Two
+  presets that share categories but use different reference species
+  (ethylene-eq vs NMVOC-eq for POCP), different ranking shifts (WMO
+  2003 vs WMO 1999 ODP putting Halon-1301 vs Halon-2402 at the top),
+  different EP semantics (combined vs split), and different GWP
+  conventions (without- vs with-feedback) lets Arko users see how
+  much of a study's bottom-line result depends on the LCIA-method
+  choice. That insight is the core practitioner value of having
+  multiple comparable presets in one tool.
+- **Shipping toxicity at V1 would create false confidence.** The
+  USES-LCA model that CML-IA toxicity uses has documented limitations
+  (infinity-time-horizon makes results dominated by long-lived
+  metals; fate models predate modern atmospheric chemistry).
+  Arko-stamped toxicity numbers without independent factor-value
+  seeds risk being cited as authoritative when they are
+  decade-old-with-known-issues. V2 toxicity will need its own
+  factor-table-entry-discipline pass with paired EF 3.1 toxicity
+  values for cross-witnessing.
+- **Hybrid matcher in ADP-fossil is the right pattern, not a smell.**
+  The source data is mixed-convention. Forcing all five fossil
+  species into one matcher type would either invent CAS numbers
+  (silent-correctness risk) or rename the species (drifts from
+  source). The hybrid is documented at the call site, witnessed by
+  a dedicated seed test (`cml_ia_adpf_matchers_are_hybrid_...`),
+  and called out in this decision so future-me does not "clean it
+  up". Names drift; CAS numbers don't — but when source data uses
+  names, we use names.
+- **Compartment-wiring caveat applies to CML's CasCompartment
+  categories** (POCP, AP, ADP-elements, half of ADP-fossil) just as
+  it does to EF 3.1. The ILCD and openLCA flow readers populate
+  `FlowMeta::compartment` as `Vec::new()` until the bridge layer
+  extracts compartment from process exchanges. So at Phase 1 exit,
+  the compartment-keyed matchers compile and register correctly,
+  pass their matcher-shape invariant tests, but only bind to real
+  flow rows when reader compartment-extraction lands. This is a
+  documented Phase-1-exit honest-state, not a regression introduced
+  by CML-IA.
+
+**Consequences:**
+
+- `MethodRegistry::standard()` ships **4 methods** at Phase 1 exit
+  (AR6, AR5, EF 3.1, CML-IA baseline 4.8). The Phase-1 method-preset
+  exit criterion (4-of-4 from the original Phase-1 plan) is met.
+- The remaining Phase 1 punch-list items (ReCiPe 2016 Midpoint
+  preset, EPDX reader, FactoredSolver) are independent of method-
+  preset count — Phase 1 exits when those land, not when CML-IA
+  shipped.
+- Per-factor source-comment template extended with the GWP100
+  without-vs-with-feedback distinguishing line. Documented at
+  `docs/licenses/cml-ia-leiden.md` for future preset entries
+  derived from the same source.
+- License posture is "gratis with no explicit license terms" —
+  defensible for V1 (factual data, different selection/arrangement,
+  attribution preserved); commercial-scale distribution would need
+  explicit grant. Full analysis at `docs/licenses/cml-ia-leiden.md`.
+- The EU sui generis Database Right is the only theoretical
+  rights-residue concern (factual data is not copyrightable; CFs
+  are factual), and Arko's selection-and-arrangement is materially
+  different from the source. Risk-disclosure in the license doc;
+  not a blocker.
+
+**Open items:**
+
+- Leiden outreach (Phase 2-3): contact Lauran van Oers
+  (`oers@cml.leidenuniv.nl`, listed contact in spreadsheet) to
+  request explicit grant for the redistributed CFs. Not blocking
+  V1; a hygiene step for commercial-scale shipping.
+- `arko-license` preset: register `cml_ia_leiden_gratis` once the
+  license-tier crate gains a "gratis-no-explicit-grant" tier
+  variant.
+- POCP low-NOx variant: track demand from real users; ship
+  alongside the per-country AP variants in V2 if a single-CF-axis
+  preset shows up insufficient.
+
+---
+
 ## 2026-04-21 · `D-0016` — `FlowOrigin` taxonomy extended from 3 to 4 values; `NonFossil` renamed `Biogenic`, `LandUseChange` added
 
 **Context:** The pre-D-0016 `FlowOrigin` enum was three-valued —

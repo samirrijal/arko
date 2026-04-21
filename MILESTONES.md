@@ -11,6 +11,31 @@ bullet. Keep entries short; link out to the richer record.
 
 ---
 
+- **2026-04-22** · **CML-IA baseline V1 preset shipped — 4/4 method
+  presets registered, Phase 1 method-preset exit criterion met** —
+  [`engine/methods/src/cml_ia.rs`](engine/methods/src/cml_ia.rs)
+  ships the EN 15804+A2-aligned subset of CML-IA baseline (Leiden
+  CML, v4.8, August 2016) as the fourth registered preset
+  alongside AR6, AR5 (legacy parity, with feedback), and EF 3.1.
+  Seven categories: GWP100 *without* climate-carbon feedback (the
+  intentional split from `ipcc-ar5-gwp100`'s with-feedback table),
+  ozone depletion (WMO 2003 steady-state), photochemical oxidation
+  (high-NOx, ethylene-eq), acidification (avg-Europe total A&B,
+  Huijbregts 1999), eutrophication (combined P+N, fate not incl.,
+  Heijungs 1992), ADP-elements (ultimate-reserves, Oers 2001),
+  ADP-fossil (hybrid `Cas`+`NameAndCompartment` matcher honouring
+  source data's mixed-convention identifiers — the only V1 category
+  that mixes matcher types within one factor list). 38 new seed
+  tests covering basic + edge + ranking + matcher-shape invariants
+  per category. Scope governed by `D-0017` (V1 = EN 15804+A2-aligned
+  subset; toxicity, regional variants, POCP low-NOx deferred to
+  V2). License posture characterised as gratis-with-no-explicit-
+  license; full analysis at
+  [`docs/licenses/cml-ia-leiden.md`](docs/licenses/cml-ia-leiden.md).
+  Closes the Phase 1 *method-preset* exit criterion (4/4 of the
+  original four-preset Phase-1 plan); ReCiPe 2016 Midpoint, EPDX
+  reader, and FactoredSolver remain as the rest of the Phase 1
+  punch list.
 - **2026-04-21** · **EF 3.1 V1 preset shipped** —
   [`engine/methods`](engine/methods) registry now ships
   three preset methods (`ipcc-ar6-gwp100`, `ipcc-ar5-gwp100`,
