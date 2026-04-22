@@ -9,6 +9,164 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-22 · `D-0020` — Phase 2 scope expansion: billing (Redsys), org/project hierarchy with role management, EN+ES UI all pulled forward from Phase 4 to Phase 2
+
+**Context:** The Execution Guide places billing, GDPR, legal pages, and
+admin panel in Phase 4 (`docs/arko-execution-guide.md:357`, "All of
+KarbonGarbi's hard-won infrastructure patterns applied"). Phase 5 exit
+is "first paying customer." Same-day Phase 2 product spec landed
+([`docs/phase-2-product-spec.md`](docs/phase-2-product-spec.md))
+articulates a six-screen + EPD output product where the canonical user
+journey — *signup → org → project → study → calc → contribution → EPD
+generation → operator submission* — requires billing and org
+infrastructure to be present from Phase 2 launch. Without billing, no
+paid customers between Phase 2 and Phase 5; without orgs, no
+consultancies (the primary customer shape per
+[`feedback_product_vs_business`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_product_vs_business.md));
+without ES UI alongside EN, half the Basque target market is gated.
+
+**Decision:** Pull three categories of work from Phase 4 → Phase 2:
+
+1. **Billing — Redsys integration**, three tiers (Studio/Team/
+   Enterprise), monthly/annual subscriptions, free 14-day trial,
+   in-app plan management. Same Redsys pattern as KarbonGarbi
+   (HMAC_SHA256_V1, COF recurring, `pycryptodome`) per
+   [`feedback_redsys_billing`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md).
+   No Stripe (initial market = Basque via Imanol's network; "Arko =
+   international" is long-term positioning, not Phase 2 reality).
+2. **Org/project hierarchy with role management** — `org → projects →
+   studies` nesting; owner/editor/viewer roles; org-level subscription
+   attachment (subscriptions belong to orgs, not users).
+3. **EN + ES UI from week 11** — i18n scaffolding (next-intl or
+   equivalent) baked in from project setup; both locales shipped at
+   v0.3.0; copy decisions made per screen alongside implementation.
+
+**Reasoning, in descending weight:**
+
+1. **Billing is GTM-critical for Phase 5 (first paying customer).**
+   Phase 5 exit is "first paying customer." Without billing
+   infrastructure in Phase 2, there's a Phase 4 cliff where billing has
+   to be built in parallel with polish + launch + landing-page work.
+   Building it in Phase 2 means it bakes for two phases (3 and 4)
+   before the first customer touches it; building it in Phase 4 means
+   it ships untested into the Phase 5 cutover.
+2. **Orgs are a prerequisite for billing.** Subscriptions attach to
+   organizations, not users — consultancies (the
+   [`feedback_product_vs_business`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_product_vs_business.md)
+   target shape: "50 Imanols + 5 consultancies") need multi-user
+   accounts. Building billing without orgs would force a painful
+   retrofit — every paying customer would need migration. Building
+   orgs without billing would build half the surface twice. They
+   couple naturally; pull both or pull neither.
+3. **ES UI is half the Basque addressable market.** Imanol's network
+   is Spanish-speaking. Shipping EN-only at v0.3.0 cuts the
+   addressable Basque market in half *during the time when Imanol-
+   shaped feedback is most actionable*. Adding i18n to a fully-built
+   UI later costs ~2x the upfront i18n scaffolding cost (every screen
+   needs key extraction, every copy decision needs revisiting).
+4. **Redsys (not Stripe) is the right gateway for the Basque market.**
+   Per
+   [`feedback_redsys_billing`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md).
+   All major Basque/Spanish industries pay through Redsys; Stripe
+   reads as foreign to the Spanish B2B market. The KarbonGarbi
+   Redsys integration code is reusable. Revisit if/when a non-Spanish
+   customer base materializes — that's a future `D-00xx`, not a
+   day-1 design assumption.
+5. **The Execution Guide's Phase 4 placement of billing/admin was
+   conservative.** Tech Spec v2.0 framed Phase 4 as "all of
+   KarbonGarbi's hard-won infrastructure patterns applied" — that
+   meant *reuse*, not *build from scratch*. Reuse from KarbonGarbi
+   (Redsys integration, org schema, role management) is faster than
+   the Phase 4 budget assumed; pulling it into Phase 2 spreads the
+   work across more weeks rather than concentrating it at launch.
+6. **The minimum working flow in the product spec is the right
+   acceptance criterion for v0.3.0.** Six steps end-to-end:
+   *signup → org → project → study → calc → contribution → EPD*. Steps
+   1 and 7 (signup, EPD operator submission) require billing and
+   account infrastructure. Phase 2 v0.3.0 cannot demo the canonical
+   flow without these.
+
+**Consequences:**
+
+- **Phase 2 scope grows by ~3-5 weeks of additional work** (Redsys + orgs
+  + i18n on top of the 5-screen + EPD output build the Execution Guide
+  budgeted). Phase 2 timeline either:
+  - **Stretch:** 14 weeks → ~17-20 weeks (decision shape A)
+  - **Rescope:** defer Scenario Comparison to Phase 3, which absorbs
+    naturally alongside Monte Carlo / sensitivity UIs that already
+    target Phase 3 (decision shape B)
+
+  Phase 2 week 11 is the right moment to lock A or B; both are
+  defensible. Phase 2 week-1 work (week 11 itself) is the same under
+  either choice.
+- **Phase 4 timeline shrinks correspondingly.** Phase 4 becomes pure
+  polish (Monte Carlo / sensitivity UIs surface, landing page, docs
+  site, CloudNativePG migration). The "all of KarbonGarbi's
+  infrastructure patterns" Phase 4 line is partially closed-out by
+  Phase 2 itself.
+- **Postgres schema in `docs/phase-2-boundary-memo.md` §3 grows.** Add
+  tables: `organizations`, `projects`, `org_members` (with role enum:
+  `owner` / `editor` / `viewer`), `subscriptions`, `redsys_customers`
+  (mirrors the KarbonGarbi `redsys_identifier` column pattern from
+  [`feedback_redsys_billing`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md)).
+- **Boundary memo §1 (scope) reframes** to point at the product spec
+  as canonical scope source; boundary memo retains its architectural
+  + decisions + week-1-spike + hand-off role.
+- **Imanol session at week 14** adds an org-shape question: "show him
+  the org/project hierarchy and ask if it matches consultancy
+  workflows" alongside the existing Process Browser questions.
+- **`feedback_redsys_billing` memory updated** today to cover both
+  KarbonGarbi *and* Arko (was previously KarbonGarbi-only); the
+  "don't assume Arko = international until user explicitly opens up
+  the geography" guard added so future-me doesn't repeat the original
+  Stripe assumption that prompted this decision.
+
+**Open items:**
+
+- **Phase 2 timeline shape — stretch (A) vs rescope (B).** Lock at
+  week 11 (Phase 2 day 1). Decision shape lives in the boundary memo's
+  week-1 work list as `D-00xx`.
+- **Tier feature gating.** Studio / Team / Enterprise — which features
+  gate behind which tier (study count, project count, advanced
+  comparison, EPD generation, multi-user, etc.). Defer to Phase 2
+  week 11-12 product decision alongside billing implementation.
+- **Tier prices.** Set in Phase 2 week 11-12; informed by Imanol-style
+  consultancy rate context.
+- **i18n source-of-truth format.** JSON files vs a translations service
+  (Crowdin, etc.) — defer to week 11; JSON files first by default
+  (the Execution Guide's "no premature infrastructure" posture).
+- **Org-level billing vs per-user billing.** Decision lands in the
+  Redsys subscription model: each org has one subscription, role
+  changes don't trigger billing changes. Per-user pricing (e.g., $X
+  per editor seat) is a tier-config detail, not an architecture
+  question.
+- **GDPR / legal pages.** Originally bundled with Phase 4 billing
+  work; should they pull forward too? **Yes** — billing without legal
+  pages (privacy policy, ToS, cookie consent) cannot accept paying
+  customers in the EU. Add to Phase 2 scope; not breaking out as a
+  separate `D-00xx` because they're a logical billing-bundle item
+  rather than a standalone decision.
+- **Admin panel.** Defer to Phase 4 with the original guide placement.
+  Admin needs are diagnostic / support-shaped, not blocking the
+  customer journey. Phase 2 ships with raw Postgres access for me;
+  Phase 4 wraps it in UI.
+
+**Back-references:**
+
+- [`docs/phase-2-product-spec.md`](docs/phase-2-product-spec.md) —
+  the canonical product scope this decision adapts the timeline to.
+- [`docs/phase-2-boundary-memo.md`](docs/phase-2-boundary-memo.md) —
+  architectural decisions, week-1 spikes, hand-off (rewritten to
+  reference the product spec).
+- [`feedback_redsys_billing`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md) —
+  Redsys-as-billing-gateway feedback memory, scope updated today to
+  cover Arko as well as KarbonGarbi.
+- [`feedback_product_vs_business`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_product_vs_business.md) —
+  "50 Imanols + 5 consultancies" target customer shape that motivates
+  the org/project hierarchy.
+
+---
+
 ## 2026-04-22 · `D-0019` — ReCiPe 2016 Midpoint Hierarchist V1 scoped to 10 categories with GLO-only matchers; `CasRegion` + per-process pipeline restructure deferred to V2
 
 **Context:** ReCiPe 2016 Midpoint Hierarchist is the fourth and final

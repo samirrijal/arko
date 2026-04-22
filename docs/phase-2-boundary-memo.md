@@ -1,37 +1,61 @@
 # Phase 2 Boundary Memo — Web UI MVP
 
-**Drafted:** 2026-04-22 (at v0.2.0 tag)
-**Phase 2 window per Execution Guide:** Weeks 11–24
-**Inputs:** Phase 1 closeout retrospective ([`phase-1-closeout.md`](phase-1-closeout.md)), Execution Guide §Phase 2 ([`arko-execution-guide.md:178`](arko-execution-guide.md#L178)), Tech Spec v2.0 ([`arko-tech-spec-v2.md`](arko-tech-spec-v2.md))
+**Drafted:** 2026-04-22 (at v0.2.0 tag), §1/§3/§5 reframed for `D-0020` scope-pull-forward
+**Phase 2 window per Execution Guide:** Weeks 11–24 (timeline shape A vs B per §5 / `D-0020`)
+**Inputs:**
+- [`phase-2-product-spec.md`](phase-2-product-spec.md) — **canonical scope source**
+- [`phase-1-closeout.md`](phase-1-closeout.md) — engine state at boundary
+- [`arko-execution-guide.md:178`](arko-execution-guide.md#L178) — original roadmap (parts overridden by `D-0020`)
+- [`arko-tech-spec-v2.md`](arko-tech-spec-v2.md) — pragmatic compromises
+- [`DECISIONS.md` `D-0020`](../DECISIONS.md) — Phase-4-to-Phase-2 scope pull-forward (billing, orgs, i18n)
 
-This memo is the v0.2.0 → v0.3.x boundary record: the scope Phase 2
-inherits, the architectural decisions still open at the boundary, the
-gaps inherited from Phase 1 that have to be addressed before screens
-can be built, and the concrete week-1 work that opens Phase 2.
+This memo is the v0.2.0 → v0.3.x boundary record: the *architectural*
+decisions still open at the boundary, the gaps inherited from Phase 1
+that have to be addressed before screens can be built, and the
+concrete week-1 work that opens Phase 2. *What* gets built lives in
+[`phase-2-product-spec.md`](phase-2-product-spec.md); this memo is
+*how* it gets built.
+
 Decisions land in [`DECISIONS.md`](../DECISIONS.md) as `D-0020` onward
-once committed.
+once committed (`D-0020` already filed for the scope expansion).
 
 ---
 
-## 1. Scope inherited from the Execution Guide
+## 1. Scope — see the product spec
 
-Five core screens, exit criteria from
-[`arko-execution-guide.md:178`](arko-execution-guide.md#L178):
+Canonical: [`phase-2-product-spec.md`](phase-2-product-spec.md). Six
+deliverables (5 screens + EPD output) plus shared infrastructure
+(auth, billing, orgs, projects, navigation, persistence, basic help).
+The minimum working flow at the bottom of the spec is the v0.3.0
+acceptance criterion.
 
-| # | Screen | Execution Guide week | Exit criterion |
+| Deliverable | Source | Execution Guide week (original) | Boundary memo notes |
 |---|---|---|---|
-| 1 | **Process Browser** | 13–14 | List + detail + filters + full-text search + "Add to study" + recently-viewed persistence |
-| 2 | **Study Builder** | 15–17 | Goal & scope, processes from library, parameters, tree/canvas/table tri-view, save/load |
-| 3 | **Calculation Runner** | 18–19 | Method picker, run (in-browser WASM <100ms or API for large), per-stage breakdown, JSON/CSV export, signed manifest display |
-| 4 | **Contribution Analysis** | 20–21 | Tree table + Sankey + hotspot + filter + PNG/SVG export |
-| 5 | **Scenario Comparison** | 22 | Side-by-side, bar chart, % difference, optional Monte Carlo significance |
+| Process Browser | [spec](phase-2-product-spec.md#process-browser) | 13–14 | inherits Phase 1 reader crates (ILCD, openLCA JSON-LD); §2.4 compartment-shape gap is load-bearing here |
+| Study Builder | [spec](phase-2-product-spec.md#study-builder) | 15–17 | LCIA method dropdown defaults to EF 3.1 V1 (matches `D-0015` framing) |
+| Calculation Runner | [spec](phase-2-product-spec.md#calculation-runner) | 18–19 | depends on §2.5 WASM compile spike; signed-manifest display reuses determinism contract from v0.0.1 |
+| Contribution Analysis | [spec](phase-2-product-spec.md#contribution-analysis) | 20–21 | Sankey-primary visualization (visx Sankey or @nivo/sankey per Execution Guide note line 258) |
+| Scenario Comparison | [spec](phase-2-product-spec.md#scenario-comparison) | 22 | candidate to defer to Phase 3 under timeline shape B (per `D-0020`) |
+| EPD Output | [spec](phase-2-product-spec.md#epd-output) | 23–24 | LCAx writer (`io-lcax`, shipped Phase 1); Environdec submission guidance text only — no automated submission |
 
-Plus the cross-cutting deliverables:
+**Scope expansion via `D-0020` (pulled forward from Phase 4):**
 
-- First **EPD renderer** end-to-end (Environdec template) — week 23–24
+- **Billing** — Redsys integration (per
+  [`feedback_redsys_billing`](../../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md)),
+  three tiers (Studio/Team/Enterprise), 14-day trial, in-app plan
+  management. Spec section: *The shared infrastructure → Billing*.
+- **Org/project hierarchy** — `org → projects → studies` with
+  owner/editor/viewer roles. Spec section: *The shared infrastructure
+  → Organization/team management* + *Project structure*.
+- **EN + ES UI** — i18n scaffolded from week 11; both locales shipped
+  at v0.3.0. Spec section: *What Phase 2 does not include* — "EN + ES
+  only" is the V1 boundary, not zero-i18n.
+
+**Cross-cutting (from Execution Guide):**
+
 - **Imanol-usable** for one real small study by week 24
 - **WASM build** of `arko-engine` — set up week 11–12, used by Calc Runner from week 18
-- **Axum API server** for studies that exceed WASM bounds — week 18–19
+- **Axum API server** for studies that exceed WASM bounds — see §2.6 for day-1-vs-week-18 decision
 
 ---
 
@@ -150,20 +174,36 @@ from week 11.
 
 **What needs schema in Phase 2:**
 
-- `users` (Supabase Auth's table) + `workspaces` (n:m via membership table)
-- `studies` (the JSON-serialisable `arko_core::Study`, plus metadata: name, owner, workspace, created/updated timestamps, lock state)
+*Account / billing layer (added per `D-0020`):*
+
+- `users` (Supabase Auth's table)
+- `organizations` (orgs are the subscription-attachment unit)
+- `org_members` (m:n users↔orgs with `role` enum: `owner` / `editor` / `viewer`)
+- `subscriptions` (org-level; tier ∈ {`studio`, `team`, `enterprise`}; status ∈ {`trial`, `active`, `past_due`, `canceled`}; trial_ends_at, current_period_end)
+- `redsys_customers` (mirrors KarbonGarbi's `redsys_identifier` column pattern per [`feedback_redsys_billing`](../../C--Users-hical-Desktop-karbongarbi/memory/feedback_redsys_billing.md); stores `DS_MERCHANT_IDENTIFIER` after first payment for COF MIT charges)
+- `projects` (org-scoped folders that contain studies; created by consultancies per client)
+
+*Study / calculation layer (Execution Guide native):*
+
+- `studies` (the JSON-serialisable `arko_core::Study`, plus metadata: name, project_id, created_by, created/updated timestamps, lock state, EPD-program-operator FK)
 - `studies_versions` (immutable snapshots — Phase 3 verifier workflow needs this; ship the table in Phase 2 to avoid migration churn)
 - `processes_imported` (cached/indexed view of imported processes for the Process Browser; the canonical source remains the original ILCD/openLCA bundles on disk or object storage)
 - `study_runs` (calculation results with signed manifest, for reproducibility)
 - `recently_viewed` (per-user) — Process Browser exit criterion
 
-**Open question:** how much of the imported-process catalogue lives in
-Postgres versus how much stays as parsed-on-load from the original
-bundles. Indexing for full-text search needs Postgres rows; loading a
-94k-flow EF reference package every session is unacceptable. Decision
-shape: pre-parse on import, write a flat row per process to
-`processes_imported`, keep the bundle on disk for re-resolution if
-needed.
+**Open question (process catalogue):** how much of the imported-process
+catalogue lives in Postgres versus how much stays as parsed-on-load
+from the original bundles. Indexing for full-text search needs
+Postgres rows; loading a 94k-flow EF reference package every session
+is unacceptable. Decision shape: pre-parse on import, write a flat row
+per process to `processes_imported`, keep the bundle on disk for
+re-resolution if needed.
+
+**Open question (process catalogue scope):** are imported databases
+org-scoped or system-shared? `D-00xx` candidate at week 11. Default
+assumption: org-scoped (consultancy A's USDA import is independent of
+consultancy B's), with system-pre-loaded databases (the three Phase 1
+free DBs) shared.
 
 ---
 
@@ -212,22 +252,49 @@ and produces a Phase 2 work surface.
 6. **Design system divergence** (`D-00xx`) — which KarbonGarbi tokens
    carry over, which Arko diverges on.
 
+### Day 2–3: `D-0020` follow-on decisions
+
+7. **Timeline shape A vs B** (`D-00xx`) — A = stretch Phase 2 from 14
+   to 17–20 weeks to absorb billing/orgs/i18n; B = keep the 14-week
+   window and defer Scenario Comparison to Phase 3. Pick before week-1
+   exits, because the screen ordering in §1 changes under shape B.
+8. **Tier feature gating** (`D-00xx`) — what each of Studio / Team /
+   Enterprise actually unlocks (study count, org seats, EPD generation
+   throttling, premium databases). Without this, the billing UI can't
+   be built.
+9. **Tier pricing** (`D-00xx`) — €/month for each tier, monthly vs
+   annual, free-trial length (default 14 days per spec). Shape: list
+   prices in the decision; revisit only if Imanol's network signals
+   they're off-market.
+10. **i18n source-of-truth format** (`D-00xx`) — `next-intl` JSON
+    bundles vs `react-i18next` vs Lingui. Default lean: `next-intl`
+    (Next.js 15 native). Locks the translator workflow for the next 14
+    weeks.
+
 ### Day 3–5: scaffold
 
-7. **Repo creation** — `goibix/arko-app` (Next.js 15 + TS + Tailwind +
-   shadcn/ui) per the §2.3 ratified design system.
-8. **Auth wired** per §2.2 decision.
-9. **Database scaffolded** — Postgres schema for §3 tables, migrations
-   in repo.
-10. **WASM integration** — engine compiled, loaded by a smoke page that
+11. **Repo creation** — `goibix/arko-app` (Next.js 15 + TS + Tailwind +
+    shadcn/ui) per the §2.3 ratified design system.
+12. **Auth + org model wired** per §2.2 decision; users land in a
+    default org on signup, role = `owner`.
+13. **Database scaffolded** — Postgres schema for §3 tables (account
+    layer + study layer), migrations in repo. Billing tables included
+    even if Redsys integration isn't wired yet.
+14. **i18n scaffold** — `en` and `es` locale files in repo from day 1;
+    every screen built henceforth ships both locales (no English-only
+    debt to retrofit later).
+15. **Redsys sandbox account** — request from BBVA / partner bank in
+    week 11 (provisioning lead time); integration code lands in the
+    week the billing UI does, but the credentials need to exist.
+16. **WASM integration** — engine compiled, loaded by a smoke page that
     runs the carpet calc in-browser and shows the result. Closes the
     §2.5 spike.
-11. **Deploy pipeline** — first deployment to chosen target (Vercel or
+17. **Deploy pipeline** — first deployment to chosen target (Vercel or
     self-hosted), even if it's a "Hello, Arko" page.
 
 ### Day 5: Imanol scope confirmation (optional but encouraged)
 
-12. **20-minute call with Imanol** — show him the 5-screen scope and
+18. **20-minute call with Imanol** — show him the 5-screen scope and
     the order; ask which screen he most wants to see first. The
     Execution Guide locks order (Process Browser → Study Builder → …),
     but his answer informs which features within each screen are
@@ -238,18 +305,42 @@ and produces a Phase 2 work surface.
 
 ## 6. What Phase 2 explicitly does *not* include
 
-Per the Execution Guide and Tech Spec v2.0:
+Per the Execution Guide, Tech Spec v2.0, and the
+[product spec's "What Phase 2 does *not* include"](phase-2-product-spec.md#what-phase-2-does-not-include):
+
+*Engine/calc layer:*
 
 - **Monte Carlo / sensitivity UIs** — Phase 4 (engine already supports
-  them; UIs are in [`arko-execution-guide.md:359`](arko-execution-guide.md#L359))
-- **Multiple EPD templates** — Phase 3 (Phase 2 ships Environdec only)
-- **Verifier workflow** (lock + audit + signature) — Phase 3
-- **PEF report generator** — Phase 3
-- **License tier UI propagation** — Phase 3 (the `license_tier` field
-  exists on `ProcessMeta` in v0.2.0; Phase 3 surfaces it in the UI)
+  them via `FactoredSolver`; UIs are in
+  [`arko-execution-guide.md:359`](arko-execution-guide.md#L359))
 - **ecoinvent integration** — Phase 4+ (license-access infrastructure
   is Phase 4 work; the V1 hook in `engine/core/src/license.rs` is the
   carrier)
+- **License tier UI propagation** — Phase 3 (the `license_tier` field
+  exists on `ProcessMeta` in v0.2.0; Phase 3 surfaces it in the UI)
+
+*Output layer:*
+
+- **Multiple EPD templates** — Phase 3 (Phase 2 ships Environdec only)
+- **Verifier workflow** (lock + audit + signature) — Phase 3
+  (`studies_versions` table ships in Phase 2 to avoid migration churn)
+- **PEF report generator** — Phase 3
+- **Automated EPD submission** — out (Phase 2 generates LCAx + PDF;
+  user submits to operator manually)
+
+*Account / billing layer (D-0020 carve-outs — what's still NOT in Phase 2):*
+
+- **Admin panel / super-admin** — Phase 4 (operationally ok to manage
+  via SQL or Supabase Studio in Phase 2)
+- **SSO / SAML / Active Directory** — Phase 4 (email-password +
+  password reset only in Phase 2)
+- **Locales beyond EN + ES** — V2+ (per spec: "EN + ES only" is V1
+  boundary, not zero-i18n)
+- **Self-serve refund / dunning automation** — Phase 4 (manual handling
+  via Redsys merchant console is fine for Phase 2's customer count)
+
+*Infra / GTM:*
+
 - **CloudNativePG migration** — Phase 4
 - **Documentation site (`docs.arko.earth`)** — Phase 4
 - **Marketing landing (`arko.earth`)** — Phase 4 *(per Arko GTM
@@ -273,21 +364,41 @@ Per the Execution Guide and Tech Spec v2.0:
 | At least one preset registered for every category the Phase-2 EPD template needs | ✅ (CC, OD, POCP, AC, EU-fw, EU-m, EU-t covered by EF 3.1) |
 | A user can go import → study → calc → result with current engine + CLI | ✅ (week-10 integration deliverable per guide line 145) |
 
-Two untested items become week-11 spikes. Everything else is green or
-explicitly deferred with a referenced decision.
+*Account / billing layer (added per `D-0020`):*
+
+| Item | Status at v0.2.0 |
+|---|---|
+| Auth provider chosen (Supabase vs Keycloak) | ❌ — week-11 `D-00xx` |
+| Org/role schema designed | ✅ (§3 above) |
+| Redsys sandbox credentials provisioned | ❌ — week-11 ask (BBVA lead time) |
+| Tier feature gating decided | ❌ — week-11 `D-00xx` |
+| Tier prices decided | ❌ — week-11 `D-00xx` |
+| i18n library chosen | ❌ — week-11 `D-00xx` (default lean: `next-intl`) |
+| ES translator workflow set up | ❌ — week-11 ask (Imanol-network candidate?) |
+
+Two engine-side items become week-11 spikes. Account/billing layer is
+all greenfield — week 11 land architecture decisions, week 12+ build.
 
 ---
 
 ## 8. Phase 2 → Phase 3 hinge
 
-Phase 3 ("EPD/PEF Production-Ready", weeks 25–34) starts when:
+Phase 3 ("EPD/PEF Production-Ready", weeks 25–34 under timeline shape A,
+shifted under shape B per `D-0020`) starts when:
 
-- All five Phase 2 screens exit-criterion green
-- Imanol's week-24 score ≥ 6 (else: Phase 3 starts with UI rework)
+- Phase 2 screens exit-criterion green — **5 screens under shape A**, or
+  **4 screens (Scenario Comparison deferred to Phase 3)** under shape B
+- Imanol's week-24 (or shifted) score ≥ 6 (else: Phase 3 starts with
+  UI rework)
 - One Environdec EPD template renders end-to-end
 - Engine WASM build is part of CI
 - Postgres schema covers studies + versions + runs (verifier workflow
   in Phase 3 builds on `studies_versions`)
+- **Billing live** — at least one paying org through the Redsys
+  sandbox→production cutover; trial-to-paid conversion path exercised
+- **Org model live** — at least one multi-user org with a non-owner
+  member (editor or viewer) using a real study
+- **EN + ES UI parity** — every Phase 2 screen ships both locales
 
 Phase 3 entry conditions land in the Phase 2 closeout doc when v0.3.0
 tags.
