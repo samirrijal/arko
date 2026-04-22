@@ -48,7 +48,7 @@ dependencies = [
 
 [[package]]
 name = "arko-core"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-solvers-dense",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "arko-differential"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "arko-io-ecospold2"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "roxmltree",
  "serde",
@@ -88,7 +88,7 @@ dependencies = [
 
 [[package]]
 name = "arko-io-ilcd"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "roxmltree",
  "serde",
@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "arko-io-ilcd-linker"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "arko-differential",
@@ -113,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "arko-io-lcax"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "arko-methods",
@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "arko-io-olca-jsonld"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "arko-differential",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "arko-license"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "arko-solvers-dense",
@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "arko-methods"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -170,7 +170,7 @@ dependencies = [
 
 [[package]]
 name = "arko-parameters"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "thiserror",
@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "arko-sensitivity"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "arko-solvers-dense"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "arko-solvers-sparse"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "arko-uncertainty"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "rand",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "arko-units"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "approx 0.5.1",
  "arko-core",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "arko-validation"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "arko-core",
  "arko-parameters",

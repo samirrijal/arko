@@ -20,7 +20,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.83"
 authors = ["Goibix S.L. <engineering@arko.earth>"]
@@ -40,22 +40,22 @@ blake3 = "1"
 approx = "0.5"
 
 # Inter-crate path dependencies — kept in workspace so versions move in lockstep.
-arko-core = { path = "core", version = "0.0.1" }
-arko-differential = { path = "differential", version = "0.0.1" }
-arko-io-ecospold2 = { path = "io-ecospold2", version = "0.0.1" }
-arko-io-ilcd = { path = "io-ilcd", version = "0.0.1" }
-arko-io-ilcd-linker = { path = "io-ilcd-linker", version = "0.0.1" }
-arko-io-lcax = { path = "io-lcax", version = "0.0.1" }
-arko-io-olca-jsonld = { path = "io-olca-jsonld", version = "0.0.1" }
-arko-license = { path = "license", version = "0.0.1" }
-arko-methods = { path = "methods", version = "0.0.1" }
-arko-parameters = { path = "parameters", version = "0.0.1" }
-arko-sensitivity = { path = "sensitivity", version = "0.0.1" }
-arko-solvers-dense = { path = "solvers-dense", version = "0.0.1" }
-arko-solvers-sparse = { path = "solvers-sparse", version = "0.0.1" }
-arko-uncertainty = { path = "uncertainty", version = "0.0.1" }
-arko-units = { path = "units", version = "0.0.1" }
-arko-validation = { path = "validation", version = "0.0.1" }
+arko-core = { path = "core", version = "0.2.0" }
+arko-differential = { path = "differential", version = "0.2.0" }
+arko-io-ecospold2 = { path = "io-ecospold2", version = "0.2.0" }
+arko-io-ilcd = { path = "io-ilcd", version = "0.2.0" }
+arko-io-ilcd-linker = { path = "io-ilcd-linker", version = "0.2.0" }
+arko-io-lcax = { path = "io-lcax", version = "0.2.0" }
+arko-io-olca-jsonld = { path = "io-olca-jsonld", version = "0.2.0" }
+arko-license = { path = "license", version = "0.2.0" }
+arko-methods = { path = "methods", version = "0.2.0" }
+arko-parameters = { path = "parameters", version = "0.2.0" }
+arko-sensitivity = { path = "sensitivity", version = "0.2.0" }
+arko-solvers-dense = { path = "solvers-dense", version = "0.2.0" }
+arko-solvers-sparse = { path = "solvers-sparse", version = "0.2.0" }
+arko-uncertainty = { path = "uncertainty", version = "0.2.0" }
+arko-units = { path = "units", version = "0.2.0" }
+arko-validation = { path = "validation", version = "0.2.0" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -7,6 +7,36 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-22 — Phase 1 closeout
+
+Phase 1 (Engine Breadth, Weeks 3–10) ships against the named-slate
+exit criterion 4/4: AR6, EF 3.1, CML-IA baseline 4.8 (satisfying
+CML 2001 via Leiden continuation), and ReCiPe 2016 Midpoint Hierarchist
+all registered in `MethodRegistry::standard()`. AR5 ships as a
+documented legacy-parity bonus (registry length 5).
+
+Three real-data parity smokes underwrite engine correctness at the
+boundary: `ef_carpet_parity_smoke` (bit-exact, single-process CC),
+`beef_multi_process_parity_smoke` (max |dev| 1.776e-15 on 5×5 LU), and
+`beef_factored_parity_smoke` (factored-vs-single-shot ≤ 1e-15, transitive
+parity to numpy). Both pre-existing smokes preserved across two taxonomy
+extensions (`FactorMatch::CasCompartment`, `FlowOrigin::LandUseChange`)
+and four preset additions.
+
+Architectural deliverables: `FactoredSolver` trait + `DenseLuFactorization`
+in `arko-solvers-dense`; LCAx v3.4 writer V1 in `arko-io-lcax` (closes
+the Phase-1 "EPDX" bullet via the maintained successor format per
+`D-0018`); `arko-io-olca-jsonld` reader crate (per `D-0014`).
+
+V2 deferrals each carry an active decision-log entry and a concrete
+trigger condition: regionalisation bundle (`D-0019`), USEtox toxicity
+slate (`D-0017`/`D-0019`), LCAx reader + ILCD+EPD writer (`D-0018`),
+egalitarian/individualist ReCiPe perspectives (`D-0019`), CML-IA
+toxicity (`D-0017`).
+
+Full retrospective at [`docs/phase-1-closeout.md`](../docs/phase-1-closeout.md);
+Phase 2 scope at [`docs/phase-2-boundary-memo.md`](../docs/phase-2-boundary-memo.md).
+
 ### Added — `FactoredSolver` trait + `DenseLuFactorization` for factor-once-solve-many in `arko-solvers-dense` (2026-04-22)
 
 New surface in `arko-solvers-dense` for workflows that reuse the

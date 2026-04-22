@@ -11,6 +11,26 @@ bullet. Keep entries short; link out to the richer record.
 
 ---
 
+- **2026-04-22** · **`arko-engine v0.2.0` tagged — Phase 1 (Engine Breadth) closeout** —
+  retrospective at [`docs/phase-1-closeout.md`](docs/phase-1-closeout.md),
+  Phase 2 scope at [`docs/phase-2-boundary-memo.md`](docs/phase-2-boundary-memo.md).
+  Closes the Execution Guide Phase 1 exit criteria
+  ([`docs/arko-execution-guide.md:103-110`](docs/arko-execution-guide.md#L103))
+  with all seven items satisfied (named-slate 4/4, ILCD multi-file
+  loader, OpenLCA JSON-LD import, LCAx V1 writer, three free databases
+  importable, FactoredSolver trait, unit-test coverage). `MethodRegistry::
+  standard()` ships 5 presets at the boundary (4 named-slate + AR5
+  legacy-parity bonus); `FactorMatch` taxonomy at 5 variants
+  (`CasCompartment` added per `D-0015`); `FlowOrigin` taxonomy at 4
+  variants (`LandUseChange` added per `D-0016`). Three real-data parity
+  smokes green: carpet (bit-exact), beef multi-process (1.776e-15), beef
+  factored (≤1e-15 vs single-shot, transitive to numpy). Workspace at
+  16 crates (Phase 1 added `io-ilcd-linker`, `io-lcax`, `io-olca-jsonld`
+  to the v0.0.1 baseline of 13). V2 deferrals all carry decision-log
+  entries with concrete trigger conditions: regionalisation bundle
+  (`D-0019`), USEtox toxicity (`D-0017`/`D-0019`), LCAx reader +
+  ILCD+EPD writer (`D-0018`), egalitarian/individualist ReCiPe
+  perspectives (`D-0019`).
 - **2026-04-22** · **ReCiPe 2016 Midpoint Hierarchist V1 registered — Phase 1 named-slate criterion closed (4/4)** —
   [`engine/methods/src/recipe_2016.rs`](engine/methods/src/recipe_2016.rs)
   factor table landed earlier the same day at commit `a69cbd5`

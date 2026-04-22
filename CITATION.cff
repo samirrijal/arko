@@ -16,8 +16,8 @@ abstract: >-
   reference AR5 / AR6 GWP100 method presets with CH4 fossil / non-fossil
   origin splitting per IPCC WG1 Ch7 T7.15.
 license: Apache-2.0
-version: 0.0.1
-date-released: "2026-04-19"
+version: 0.2.0
+date-released: "2026-04-22"
 keywords:
   - life-cycle-assessment
   - LCA
