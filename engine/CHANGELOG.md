@@ -7,6 +7,104 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — `FactoredSolver` trait + `DenseLuFactorization` for factor-once-solve-many in `arko-solvers-dense` (2026-04-22)
+
+New surface in `arko-solvers-dense` for workflows that reuse the
+technosphere `A` across many right-hand sides — sensitivity sweeps,
+Monte Carlo, the §10 incremental recalc path. The single-shot
+`arko_core::Solver` trait stays unchanged for one-off `(A, f)`
+solves.
+
+**API shape:**
+
+- `pub trait FactoredSolver { type Factorization; fn factorize(&self, a: &SparseMatrix) -> Result<Self::Factorization, EngineError>; }`
+- `pub struct DenseLuFactorization { /* opaque */ }` with
+  `pub fn solve(&self, f: &SparseVector) -> Result<DenseVector, EngineError>`
+  and `pub fn dim(&self) -> usize`.
+- `impl FactoredSolver for DenseLuSolver { type Factorization = DenseLuFactorization; .. }` —
+  factoring stores nalgebra's packed `LU` + permutation + cached `n`;
+  every subsequent `solve` is a triangular back-substitution only.
+
+The trait lives in the dense backend rather than `arko_core` because
+the cached factorization type is irreducibly backend-specific
+(nalgebra `LU` here; SuperLU / UMFPACK column structure for sparse;
+preconditioners for iterative methods). Hiding all of those behind a
+single core trait would force `Box<dyn Any>` or aggressive generics;
+co-locating `FactoredSolver` with each backend keeps the
+factorization type concrete and the API free of gymnastics. The
+single-shot `Solver` contract stays in core because
+`pipeline::compute` needs to name *one* polymorphic solve point.
+
+**Why a per-backend trait is OK:** workflows that need
+factor-many-solve already know which backend they're targeting (the
+caller picks `DenseLuSolver` vs `SparseLuSolver` based on `n` per
+spec §6.3, then takes advantage of factor caching once that choice
+is made). Polymorphism over the cached form would buy nothing; the
+caller would have to downcast to use the result anyway.
+
+**`Solver::solve` refactored to delegate:**
+`solve(A, f) ≡ factorize(A)?.solve(f)`. The two surfaces share one
+numerical kernel by construction, so future drift between them is
+mechanically impossible. RHS shape-check error message text is
+preserved exactly (existing tests assert on it).
+
+**Singularity timing contract:** Singularity surfaces at *solve*
+time, not *factorize* time. nalgebra's `LU` constructor itself
+never errors; the zero-pivot signal arrives during back-
+substitution. A factorization of a singular `A` constructs
+successfully, then every `solve` against it returns
+`EngineError::Singular`. Pinned by the
+`factored_solve_surfaces_singularity_at_solve_time` unit test —
+moving the check to factorize time would silently break callers
+that construct factorizations for diagnostic/inspection purposes.
+
+**Tests added (8 unit + 1 parity smoke):**
+
+- `arko-solvers-dense::tests`: 8 new — `factorize_caches_dim`,
+  `factorize_then_solve_matches_single_shot_on_coupled_3x3` (regression
+  guard against accidentally diverging the two surfaces),
+  `factorize_solves_many_rhs_without_refactoring` (the API contract
+  that justifies the trait existing — solves for each column of I to
+  reconstruct A⁻¹, then verifies via the residual check
+  `A · column_k = e_k`), `factorize_rejects_non_square`,
+  `factored_solve_rejects_dim_mismatch_on_rhs`,
+  `factored_solve_surfaces_singularity_at_solve_time`,
+  `factored_solve_is_deterministic_across_repeated_calls`,
+  `factored_solve_handles_distinct_rhs_independently`. Total
+  `arko-solvers-dense` test count now 13 (was 5).
+- `arko-io-olca-jsonld/tests/beef_factored_parity_smoke.rs`: new
+  env-gated parity smoke. Builds the same 5×5 `A` as
+  `beef_multi_process_parity_smoke`, factors once, solves for each
+  `e_k` column, asserts (a) per-column factored-vs-single-shot at
+  absolute `1e-15` (surfaces share a kernel — any nonzero gap is a
+  regression, not a numerical artefact) and (b) per-column residual
+  `A · s_k ≈ e_k` at `ToleranceClass::CrossImpl`
+  (`ε_abs = 1e-9`, `ε_rel = 1e-6`). The residual check is
+  independent of whichever solver produced `s_k` — if both surfaces
+  silently regressed in the same way (e.g., a shared upstream
+  nalgebra bug) the residual would still surface it.
+
+**Transitive parity (no new Python script needed):** the existing
+`beef_multi_process_parity_smoke` already proves single-shot
+`DenseLuSolver` matches `numpy.linalg.solve` on the same beef A.
+The new factored smoke proves factored matches single-shot. Therefore
+factored matches numpy without a new reference computation.
+
+**Workspace verification:** `cargo test --workspace` passes (every
+crate `0 failed`). The `Solver::solve` delegate refactor preserves
+all existing `arko-core`, `arko-solvers-dense`, `arko-solvers-sparse`,
+`arko-methods` end-to-end, `arko-differential`, `arko-io-*` tests
+(the singular detection test, all error-message-text assertions,
+the AR6/AR5 parity test, the io-* smokes — all unchanged outputs).
+
+**Phase 1 remaining punch list:** Phase 1 closeout (`v0.2.0` tag on
+the final commit, `arko/docs/phase-1-closeout.md` retrospective,
+Phase 2 boundary memo). All exit-criterion gates are now closed —
+named-slate registered (4/4 at `3c8c6d7`), `FactoredSolver` shipped
+(this commit), differential parity harness landed earlier, three
+free databases importable, ILCD linker shipped. Closeout is the
+process-work piece, not a gate.
+
 ### Added — ReCiPe 2016 Midpoint Hierarchist V1 registered in `MethodRegistry::standard()` — Phase-1 named-slate criterion closed (2026-04-22)
 
 `MethodRegistry::standard()` now ships **5 method presets** (was 4):
