@@ -49,6 +49,15 @@ impl MethodRegistry {
     ///   Legacy-EPD verification + side-by-side with EF 3.1. Note:
     ///   GWP100 values differ from `ipcc-ar5-gwp100` by design —
     ///   CML uses IPCC 2013 *without* climate-carbon feedback.
+    /// - `("recipe-2016-midpoint-h", "1.1")` — ReCiPe 2016 Midpoint
+    ///   Hierarchist (RIVM v1.1), 10 categories: 6 EN 15804+A2
+    ///   emission-based + ADP-fossil for cross-preset parity + 3
+    ///   ReCiPe-distinctive (PMFP, land occupation, water
+    ///   consumption). GLO-only matchers; country-specific CFs +
+    ///   `CasRegion` matcher deferred to V2 per `D-0019`. Closes
+    ///   the Phase-1 named-slate criterion (4/4 registered: AR6,
+    ///   EF 3.1, CML-IA baseline 4.8 satisfying CML 2001, ReCiPe
+    ///   2016 Midpoint).
     #[must_use]
     pub fn standard() -> Self {
         let mut r = Self::new();
@@ -56,6 +65,7 @@ impl MethodRegistry {
         r.register(crate::standard::ipcc_ar5_gwp100());
         r.register(crate::ef_31::ef_31());
         r.register(crate::cml_ia::cml_ia());
+        r.register(crate::recipe_2016::recipe_2016());
         r
     }
 
@@ -192,12 +202,20 @@ mod tests {
     }
 
     #[test]
-    fn standard_registry_ships_ar5_ar6_ef31_and_cml_ia() {
+    fn standard_registry_ships_named_slate_plus_ar5_bonus() {
         let r = MethodRegistry::standard();
+        // Phase-1 named-slate criterion is **4 presets registered**:
+        // AR6, EF 3.1, CML-IA baseline 4.8 (satisfying CML 2001),
+        // ReCiPe 2016 Midpoint Hierarchist. AR5 GWP100 is a
+        // legacy-parity bonus (with climate-carbon feedback, for
+        // verifying historical EPDs); it pushes the total to 5.
+        // Bumping this assertion when the slate changes should
+        // trigger an explicit re-read of `D-0019` and the
+        // named-slate framing in the Execution Guide.
         assert_eq!(
             r.len(),
-            4,
-            "standard registry ships AR6 (default) + AR5 (legacy parity, with feedback) + EF 3.1 (EN 15804+A2 core) + CML-IA baseline 4.8 (legacy-EPD verification, GWP without feedback)"
+            5,
+            "standard registry: AR6 (default) + AR5 (legacy-parity bonus, with feedback) + EF 3.1 (EN 15804+A2 core) + CML-IA baseline 4.8 (legacy-EPD verification, GWP without feedback) + ReCiPe 2016 Midpoint Hierarchist 1.1 (D-0019, GLO-only V1)"
         );
     }
 
@@ -235,5 +253,37 @@ mod tests {
         let gwp = m.categories.iter().find(|c| c.id == "gwp100");
         assert!(gwp.is_some(), "CML-IA must include `gwp100` category");
         assert_eq!(gwp.unwrap().unit, "kg CO2-eq");
+    }
+
+    #[test]
+    fn standard_registry_has_recipe_2016() {
+        let r = MethodRegistry::standard();
+        let m = r
+            .lookup(&MethodRef {
+                id: "recipe-2016-midpoint-h".into(),
+                version: "1.1".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            m.categories.len(),
+            10,
+            "ReCiPe 2016 Midpoint H V1 ships 10 categories: 6 EN 15804+A2 emission-based + ADP-fossil + 3 ReCiPe-distinctive (PMFP, land, water)"
+        );
+        // Spot-check the climate-change category exists with the expected id.
+        let cc = m.categories.iter().find(|c| c.id == "climate-change");
+        assert!(
+            cc.is_some(),
+            "ReCiPe 2016 must include `climate-change` category"
+        );
+        assert_eq!(cc.unwrap().unit, "kg CO2-eq");
+        // Spot-check a ReCiPe-distinctive category — water-consumption is
+        // the V1 single-CF GLO default (D-0019), so its presence + unit
+        // double as a discipline pin against accidental V2-territory expansion.
+        let wcp = m.categories.iter().find(|c| c.id == "water-consumption");
+        assert!(
+            wcp.is_some(),
+            "ReCiPe 2016 must include `water-consumption` category"
+        );
+        assert_eq!(wcp.unwrap().unit, "m3 water-eq");
     }
 }

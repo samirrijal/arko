@@ -7,6 +7,80 @@ releases track the spec version they implement.
 
 ## [Unreleased]
 
+### Added — ReCiPe 2016 Midpoint Hierarchist V1 registered in `MethodRegistry::standard()` — Phase-1 named-slate criterion closed (2026-04-22)
+
+`MethodRegistry::standard()` now ships **5 method presets** (was 4):
+IPCC AR6 GWP100 (default), IPCC AR5 GWP100 (legacy-parity bonus,
+with climate-carbon feedback), EF 3.1 (EN 15804+A2 emission core),
+CML-IA baseline 4.8 (legacy-EPD verification, GWP without
+feedback), and **ReCiPe 2016 Midpoint Hierarchist 1.1**
+(`recipe-2016-midpoint-h` / `1.1`). The factor table itself landed
+earlier the same day at commit `a69cbd5` (10 categories, 47 seed
+tests, 2,256 lines, full per-factor RIVM source-traceability
+comments — see the previous CHANGELOG entry); this entry covers
+the registration step that exposes the preset through the standard
+registry.
+
+**Why split the work across two commits:** factor entry answers
+*"did we enter the right values?"* (review by reading source
+comments, spot-checking against the cited RIVM xlsx, running seed
+tests; blast radius confined to the new module). Registration
+answers *"did we integrate correctly into the standard registry?"*
+(review by reading the registration block, checking the `r.len()`
+bump matches the actual count, verifying parity smokes still
+bit-exact; blast radius is anyone calling `standard()`). Bundling
+the two would conflate the questions and make either harder to
+review in isolation. The split is now codified discipline for
+all future preset additions.
+
+**Closes the Phase-1 named-slate criterion** (Execution Guide §1
+line 107 — *four method presets registered*): AR6 ✓, EF 3.1 ✓,
+CML 2001 ✓ (satisfied via CML-IA baseline 4.8's Leiden
+continuation lineage), ReCiPe 2016 Midpoint ✓. AR5 GWP100 is the
+legacy-parity bonus that pushes the registry total to 5 — its
+presence is documented in the rustdoc bullet list and explicitly
+explained in the bumped `registry::tests` assertion comment so
+future-readers don't wonder why the count exceeds the named-slate
+four by one.
+
+**Test changes (no behaviour changes to existing methods):**
+
+- `registry::tests::standard_registry_ships_named_slate_plus_ar5_bonus`
+  (renamed from `..._ships_ar5_ar6_ef31_and_cml_ia`): `r.len() == 5`
+  with an inline framing comment that ties the assertion back to the
+  named-slate criterion and explains the AR5 bonus slot. Bumping
+  this assertion in future should trigger an explicit re-read of
+  `D-0019` and the named-slate framing in the Execution Guide.
+- `registry::tests::standard_registry_has_recipe_2016` (new): mirrors
+  the shape of `standard_registry_has_cml_ia_baseline` — looks up
+  `("recipe-2016-midpoint-h", "1.1")`, asserts 10 categories,
+  spot-checks `climate-change` (`kg CO2-eq` unit) and
+  `water-consumption` (`m3 water-eq` unit, doubles as a discipline
+  pin against accidental V2-territory expansion of the deliberate
+  single-CF V1 ship — see `D-0019` and `recipe_2016::tests::recipe_wcp_ships_exactly_one_factor`).
+- `tests/end_to_end.rs::standard_registry_contains_ipcc_gwp100_and_it_resolves`:
+  `reg.len()` assertion bumped 4 → 5 with updated comment naming
+  the named slate + AR5 bonus.
+
+**Workspace verification:** `cargo test -p arko-methods` 169 unit
+tests pass (was 168 — added `standard_registry_has_recipe_2016`)
+plus 6 end-to-end pass. No new compilation warnings. Both
+`ef_carpet_parity_smoke` and `beef_multi_process_parity_smoke` are
+env-gated (`EF_REFERENCE_BUNDLE` / `USDA_BEEF_BUNDLE`); not
+exercised this session, but the registration is mechanically inert
+against them — both lookups target `ipcc-ar6-gwp100` (unchanged
+preset, unchanged factor table), and a `BTreeMap` insertion of a
+new key cannot perturb existing lookups or their resulting C-matrix
+builds.
+
+**Phase 1 remaining punch list:** `FactoredSolver` trait (store LU
+factorisation once, solve many RHS — performance lever for
+sensitivity / Monte-Carlo paths) + Phase 1 closeout (`v0.2.0` tag
+on the final commit, `arko/docs/phase-1-closeout.md` retrospective,
+Phase 2 boundary memo scoping the smallest-UI first increment).
+ReCiPe registration is the milestone-closing event; the remaining
+items are architectural / process work, not exit-criterion gates.
+
 ### Added — LCAx v3.4 writer V1 (`arko-io-lcax`) — Phase-1 "EPDX" bullet closed via successor format (2026-04-22)
 
 New crate `engine/io-lcax` emits schema-conformant LCAx v3.4

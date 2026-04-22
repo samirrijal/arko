@@ -36,10 +36,11 @@ fn flow(id: &str, name: &str, cas: Option<&str>, origin: FlowOrigin) -> FlowMeta
 #[test]
 fn standard_registry_contains_ipcc_gwp100_and_it_resolves() {
     let reg = MethodRegistry::standard();
-    // Standard registry ships AR6 (default) + AR5 (legacy parity, with
-    // feedback) + EF 3.1 (EN 15804+A2 core) + CML-IA baseline 4.8
-    // (legacy-EPD verification, GWP without feedback).
-    assert_eq!(reg.len(), 4);
+    // Standard registry ships the Phase-1 named slate (4) plus the
+    // AR5 GWP100 legacy-parity bonus (with climate-carbon feedback) =
+    // 5 total. Named slate: AR6, EF 3.1, CML-IA baseline 4.8
+    // (satisfying CML 2001), ReCiPe 2016 Midpoint Hierarchist 1.1.
+    assert_eq!(reg.len(), 5);
     let m = reg
         .lookup(&MethodRef {
             id: "ipcc-ar6-gwp100".into(),

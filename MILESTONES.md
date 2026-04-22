@@ -11,6 +11,31 @@ bullet. Keep entries short; link out to the richer record.
 
 ---
 
+- **2026-04-22** · **ReCiPe 2016 Midpoint Hierarchist V1 registered — Phase 1 named-slate criterion closed (4/4)** —
+  [`engine/methods/src/recipe_2016.rs`](engine/methods/src/recipe_2016.rs)
+  factor table landed earlier the same day at commit `a69cbd5`
+  (10 categories, 47 seed tests, 2,256 lines, full per-factor RIVM
+  source-traceability comments); this commit wires the preset into
+  [`MethodRegistry::standard()`](engine/methods/src/registry.rs).
+  Closes the Phase-1 named-slate criterion **"four method presets
+  registered"** (Execution Guide §1 line 107): IPCC AR6 (default),
+  EF 3.1 (EN 15804+A2 core), CML-IA baseline 4.8 (satisfying
+  CML 2001 via Leiden continuation lineage), and ReCiPe 2016
+  Midpoint Hierarchist 1.1 (D-0019, GLO-only V1). Registry length
+  bumps 4 → 5; the AR5 GWP100 legacy-parity bonus (with climate-
+  carbon feedback, for verifying historical EPDs) accounts for the
+  fifth slot — the `r.len() == 5` assertion in
+  `registry::tests::standard_registry_ships_named_slate_plus_ar5_bonus`
+  carries an inline comment explaining the bonus so future-readers
+  don't wonder about the discrepancy. Factor-entry and registration
+  intentionally split across two commits per
+  `feedback_arko_factors_then_registration` — the registration
+  commit is the moment that actually changes runtime behaviour
+  (any external user can now resolve `recipe-2016-midpoint-h@1.1`
+  through `standard()`), which is the right granularity for the
+  named-slate-satisfaction event. Phase 1 remaining punch list:
+  `FactoredSolver` trait + Phase 1 closeout (`v0.2.0` tag,
+  retrospective doc, Phase 2 boundary memo).
 - **2026-04-22** · **LCAx v3.4 writer V1 shipped — Phase 1 "EPDX"
   execution-guide bullet closed via the successor format** —
   new crate [`engine/io-lcax`](engine/io-lcax) emits
