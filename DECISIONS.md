@@ -9,6 +9,376 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-22 · `D-0019` — ReCiPe 2016 Midpoint Hierarchist V1 scoped to 10 categories with GLO-only matchers; `CasRegion` + per-process pipeline restructure deferred to V2
+
+**Context:** ReCiPe 2016 Midpoint Hierarchist is the fourth and final
+named-slate Phase-1 method preset (the other three — AR6, EF 3.1,
+CML-IA baseline 4.8 — landed at `D-0015`/`D-0016`/`D-0017`). After
+shipping CML-IA, the method-preset exit criterion was misframed as
+"met (registry at 4)" because the registry happened to count to 4;
+re-reading the Execution Guide (`arko/docs/arko-execution-guide.md:107`)
+clarified that the criterion names a *specific slate* — IPCC AR6,
+ReCiPe 2016 Midpoint, EF 3.1, CML 2001 — and AR5 is a legacy-parity
+bonus not on it. Three of four named slate were shipped (AR6 ✓,
+EF 3.1 ✓, CML 2001 satisfied via CML-IA baseline v4.8's Leiden
+continuation lineage ✓); ReCiPe was still required for formal exit.
+
+`D-0015` and `D-0017` both flagged ReCiPe 2016 as the most likely
+forcing function for a `CasRegion` matcher variant. ReCiPe ships
+country-specific CFs for a subset of midpoint categories that EF 3.1
+V1 and CML-IA V1 deferred behind the same anticipated `CasRegion`
+gate — `D-0015` deferred EF 3.1 water use pending "regionalised
+matcher aligning with ReCiPe 2016", `D-0017` deferred CML-IA per-
+country AP/POCP with the explicit note "ReCiPe 2016 may force
+`CasRegion` on regionalised midpoints". This entry was drafted to
+land that variant alongside the preset; layered scoping then
+discovered a pipeline-level constraint that reframes V1 scope
+(see "Layered-scoping discoveries" below). The variant-extension
+pattern after `CasCompartment` (D-0015) and `FlowOrigin` (D-0016)
+does not apply here: `CasRegion` is part of a coupled regionalisation
+bundle deferred to V2, not a third taxonomy extension landing
+alongside ReCiPe V1.
+
+ReCiPe 2016 ships **18 midpoint categories** in three cultural
+perspectives (Hierarchist, Egalitarian, Individualist); only
+Hierarchist is in scope for V1.
+
+**Layered-scoping discoveries — three layers of contact, three
+sequential refinements:**
+
+1. **Primary-source verification (RIVM xlsx).** Three RIVM xlsx
+   versions exist: `ReCiPe2016_CFs_v1.0_20161004.xlsx`,
+   `_v1.1_20170929.xlsx`, and `_v1.1_20180117.xlsx` (the latter is
+   the post-erratum canonical version `brightway-lca/bw_recipe_2016`
+   reads). Country-specific CFs ship as a *separate* xlsx; the main
+   file ships GLO defaults for all 18 categories. Five of 18
+   categories ship country-specific CFs in the companion xlsx:
+   photochemical ozone formation (split human + ecosystems),
+   particulate matter formation, terrestrial acidification,
+   freshwater eutrophication, water consumption. Land occupation
+   is **not** country-regionalised — it uses biome/land-type
+   categorisation, which the existing `CasCompartment` matcher
+   pattern already absorbs. RIVM's downloads page documents no
+   explicit license terms — gratis-with-no-explicit-license,
+   structurally weaker than JRC EF / USDA LCA Commons, mirroring
+   the CML-IA Leiden posture (`docs/licenses/cml-ia-leiden.md`).
+   `FlowOrigin` extension not required: ReCiPe ships single CFs
+   per substance regardless of biogenic/fossil/LULUC provenance —
+   same convention as AR5/AR6, opposite of EF 3.1.
+2. **Data-model audit (where region lives).** The initial scoping
+   plan added `region: Option<String>` to `FlowMeta`. Pre-
+   implementation audit surfaced that `engine/core/src/meta.rs`
+   already carries `geography: Option<String>` on `ProcessMeta`
+   with the comment "Full regionalized impact is deferred to v0.3;
+   this is informational" — the field was placed deliberately
+   anticipating the regionalisation forcing function. Region is
+   genuinely process-level: a Spanish electricity process emits
+   CO2 in the Spanish atmosphere; a German cement plant emits SO2
+   in the German atmosphere. Region is a property of the activity
+   (the process column), not the substance (the flow row).
+   Encoding region on `FlowMeta` would conflate "what was emitted"
+   with "where the emitting happened" and orphan the existing
+   `ProcessMeta.geography` field. Corrected before any code landed.
+3. **Pipeline-depth check (whether region can be plumbed).** With
+   region established as process-level, the next layer asked: can
+   the matcher *receive* process geography at dispatch time?
+   Reading `engine/core/src/pipeline.rs` answered: **no, not in the
+   current pipeline shape.** The calculation is `g = B · s` (Eq. 2)
+   then `h = C · g` (Eq. 3). After Eq. 2, per-process information
+   collapses — `g` is a flow-aggregated vector with no provenance
+   back to which process emitted what fraction. A single `C` matrix
+   applied to `g` cannot express region-dependent CFs because the
+   process columns are gone. Honest regional CF support requires
+   restructuring Eq. 3 from `h = C · g` to
+   `h = Σₚ Cₚ · B[:,p] · s[p]` — a per-process `C` build +
+   per-process impact accumulation. That's a calc-pipeline change,
+   not a methods-crate cascade. The "matcher signature change
+   cascading through ~9 sites" estimate (the layer-2 conclusion)
+   was wrong because no caller in the current pipeline has process
+   geography to plumb.
+
+The pattern at work: each layer of contact with the actual system
+surfaced new information. These are sequential discoveries in the
+same investigation, not repeated mistakes — the alternative
+(committing to layer-1 or layer-2 assumptions and discovering the
+pipeline constraint mid-implementation) would have cost much more
+than three scope refinements in scoping.
+
+**Decision:** Ship `("recipe-2016-midpoint-h", "1.1")` with **10
+categories**, all using existing `Cas` (and `CasCompartment` where
+appropriate) matchers, with **GLO defaults from the main RIVM xlsx**
+for all 10 categories. The five regionalised-in-source categories
+use their GLO values for V1; country-specific overrides defer to V2.
+
+*EN 15804+A2 alignment subset (7) — parity with EF 3.1 V1 and
+CML-IA V1:*
+1. Global warming (GWP100, Hierarchist 100-year) — `kg CO2-eq`
+2. Stratospheric ozone depletion — `kg CFC-11-eq`
+3. Photochemical ozone formation, human health — `kg NOx-eq`
+   *(GLO default — country-specific CFs deferred to V2)*
+4. Terrestrial acidification — `kg SO2-eq`
+   *(GLO default — country-specific CFs deferred to V2)*
+5. Freshwater eutrophication — `kg P-eq`
+   *(GLO default — country-specific CFs deferred to V2)*
+6. Marine eutrophication — `kg N-eq`
+7. Fossil resource scarcity — `kg oil-eq`
+
+*ReCiPe-distinctive subset (3) — categories that justify ReCiPe's
+presence in the named slate beyond duplicating EN 15804 coverage:*
+8. Particulate matter formation — `kg PM2.5-eq`
+   *(GLO default — country-specific CFs deferred to V2)*
+9. Land occupation — `m²·a`
+10. Water consumption — `m³`
+    *(GLO default — country-specific CFs deferred to V2)*
+
+Method `name` field is `"ReCiPe 2016 Midpoint (Hierarchist, v1.1)"`.
+Per-factor source comments cite the
+`ReCiPe2016_CFs_v1.1_20180117.xlsx` post-erratum version specifically,
+plus sheet name and row. Comments on the five regionalised-in-source
+categories explicitly note "GLO default from main xlsx;
+country-specific CFs from companion xlsx deferred to V2" so future-me
+reading the factor doesn't wonder why the country xlsx isn't being
+read. Water-consumption factors carry an extra line flagging the
+brightway-hardcoded precedent.
+
+**Practitioner-default parity is the correctness story.** A study
+run through ReCiPe 2016 V1 in Arko produces the same numbers
+`bw_recipe_2016` produces — the most-used Python ReCiPe port reads
+*only* the main xlsx and treats ReCiPe as global-only (its
+`bw_recipe_2016/categories/water.py` even hardcodes water with the
+explicit comment "Provided data is effectively useless, do it
+ourselves" rather than parsing the country xlsx). Arko V1 matching
+brightway's default behaviour is defensible practitioner parity,
+not partial implementation. Regionalisation as opt-in becomes a V2
+addition driven by real user demand.
+
+**V2 regionalisation bundle (deferred together):** The pipeline-
+depth discovery means regionalisation isn't a single-axis taxonomy
+extension; it's a coupled bundle that should land together when a
+real user asks for it:
+
+- `FactorMatch::CasRegion` matcher variant (design specifics
+  revisited at V2 — `String` vs typed `Region` payload, fallback
+  chain shape — when the pipeline restructure clarifies the dispatch
+  surface).
+- Per-process `C` build + per-process impact accumulation (Eq. 3
+  restructure: `h = Σₚ Cₚ · B[:,p] · s[p]`). Affects
+  `engine/core/src/pipeline.rs`, `Study`, possibly `Computed`. The
+  honest "regional CFs work" path; Phase-2-shaped because it
+  changes the engine's fundamental computation pattern.
+- Reader-side region extraction verification (low risk: both
+  `arko-io-ilcd-linker` and `arko-io-olca-jsonld` already populate
+  `ProcessMeta.geography` natively from ILCD
+  `LocationOfOperationSupplyOrProduction` and openLCA `location.code`
+  respectively; the V2 work is end-to-end verification of the
+  regional dispatch, not new parser logic).
+- The 5 country-specific CF tables (POCP-h, particulate matter,
+  terrestrial acidification, freshwater eutrophication, water
+  consumption — V1 ships their GLO defaults from the main xlsx;
+  V2 layers country overrides on top). Region vocabulary
+  verification (ISO 3166-1 alpha-2/alpha-3, watershed IDs)
+  happens during V2 factor entry alongside the country tables.
+- `ProcessMeta.geography` promotion from "informational, deferred
+  to v0.3" to load-bearing (stays informational in V1; the
+  comment is unchanged).
+
+This is a coherent V2 bundle: when a user requests regionalised
+LCA, the work is to restructure the pipeline (Eq. 3), introduce
+`CasRegion`, verify reader region extraction end-to-end, and
+ingest the country-specific CFs as overrides on top of GLO
+baselines. Cleanly scoped V2 work driven by user demand rather
+than speculative infrastructure. Both parity smokes (EF carpet,
+beef multi-process) remain bit-exact for V1 — no taxonomy or
+pipeline changes, no fixture changes.
+
+**V2 expansion roadmap — four reasoning buckets:**
+
+*Niche or covered-elsewhere (2):*
+- Ionising radiation — niche, CML-IA V1 also skipped
+- Mineral resource scarcity (Cu-eq) — methodology contested; CML-IA
+  ships ADP-elements (ultimate-reserves) which covers the same
+  practitioner intent at a less-criticised baseline
+
+*EN 15804+A2 alignment boundary (1):*
+- Photochemical ozone formation, ecosystems — splits POCP further
+  than EN 15804+A2's single POCP indicator requires; ship the
+  EN 15804-aligned human-health variant in V1 and offer the second
+  variant in V2 once user demand surfaces
+
+*USEtox cluster — separate scoping decision (5):*
+- Human carcinogenic toxicity, human noncarcinogenic toxicity,
+  freshwater ecotoxicity, marine ecotoxicity, terrestrial
+  ecotoxicity. USEtox introduces receptor-compartment and
+  time-horizon design questions distinct from regionalisation.
+  V2 toxicity will need its own factor-table-entry-discipline pass
+  with paired EF 3.1 toxicity values for cross-witnessing
+  (same shape as the EF 3.1 / CML-IA toxicity deferrals).
+
+*Regionalisation bundle (the V2 trigger for `CasRegion` + pipeline
+restructure):* country-specific CFs for the 5 regionalised-in-source
+categories shipped here in V1 with GLO defaults. See "V2
+regionalisation bundle" above for the full coupled-work list. Real
+user demand is the trigger to land this bundle; speculative
+infrastructure ahead of demand is the wrong shape given the
+pipeline-restructure cost.
+
+**Reasoning, in descending weight:**
+
+1. **Standards reference is academic-default + regionalised-CF-
+   uniqueness, not formal endorsement.** GLAM (UNEP Life Cycle
+   Initiative) and the JRC PEF method recommendation (Commission
+   Recommendation 2021/2279) are *not* ReCiPe endorsements — JRC's
+   formal recommendation is the EF method (which Arko ships as
+   EF 3.1). ReCiPe's institutional weight is (a) the most-cited
+   single LCIA method in academic LCA practice (5000+ citations on
+   the Springer 2017 paper) and (b) the only widely-adopted method
+   shipping native regionalised CFs for water, particulate matter,
+   acidification, eutrophication, and POCP. The 10-category V1 set
+   reflects this: 7 categories cover EN 15804+A2 alignment for
+   parity with EF 3.1 / CML-IA; 3 (particulate matter, land,
+   water) cover ReCiPe-distinctive territory that justifies its
+   presence in the named slate beyond being a third copy of the
+   EN 15804 subset. This framing answers "why ship ReCiPe at all
+   if EF 3.1 and CML already cover the EN 15804 set" with a
+   concrete value proposition.
+2. **Pipeline-depth constraint forces V1 = GLO-only.** Region as
+   process-level data is correct (layer-2 discovery); the matcher
+   needing process context to dispatch is correct (layer-2
+   implication); the calc pipeline collapsing per-process
+   information at Eq. 2 means the matcher *cannot receive* process
+   context at the C-build step in the current pipeline shape
+   (layer-3 discovery). Honest regional CF support requires
+   restructuring Eq. 3 — a Phase-2-shaped change to the engine's
+   fundamental computation pattern, not a methods-crate cascade.
+   GLO-only V1 ships ReCiPe with practitioner-default semantics;
+   the regionalisation bundle defers to V2 when a real user
+   requests it.
+3. **`CasRegion` deferral is V2 architectural cleanup, not
+   regression.** Three prior preset decisions (D-0015, D-0017,
+   plus the inline comment in `engine/methods/src/ef_31.rs`)
+   deferred regional CF support pending a forcing function. The
+   forcing function turned out to be larger than a matcher
+   variant — the pipeline restructure is the real work. Deferring
+   the variant *with* the pipeline change keeps the variant from
+   being inert (added but unused) for the duration. Two taxonomy
+   extensions in the prior preset cycles (`CasCompartment`,
+   `FlowOrigin`) is a defensible pattern; `CasRegion` joining them
+   in V2 alongside the pipeline restructure is the right shape.
+4. **Hierarchist V1 only; Egalitarian and Individualist V2-or-never.**
+   Hierarchist is the standard reference (scientific consensus on
+   time frame and mechanism plausibility), the published ReCiPe
+   default, and the perspective most academic LCA studies cite.
+   Egalitarian (precautionary, long-term) and Individualist
+   (short-term, optimistic) use the *same* matcher infrastructure
+   with *different* factor tables — V2 expansion would be pure
+   factor-table addition with no design change. Clean V2 boundary.
+5. **Per-factor source comments cite v1.1_20180117 specifically.**
+   Three RIVM versions exist; the post-erratum one is the
+   community-default. Citing the version (not just "the RIVM xlsx")
+   prevents future-me re-deriving values from a different version
+   and silently producing diverging numbers. Same per-factor
+   source-comment template as EF 3.1 and CML-IA.
+6. **Brightway parity does double duty.** Originally cited as
+   evidence for three-tier fallback (region → GLO → unmatched).
+   With V1 = GLO-only, the same precedent is now evidence for
+   GLO-only-as-default-implementation. Same source, two related
+   claims: the most-used Python ReCiPe port treats regionalisation
+   as opt-in additive, and ships GLO-only as the baseline
+   experience. Arko V1 matching that posture is consistent
+   practitioner-default behavior, not partial implementation.
+7. **Water consumption is the documented scope risk.** The
+   `bw_recipe_2016` port hardcodes this category — its
+   `bw_recipe_2016/categories/water.py` carries the comment
+   "Provided data is effectively useless, do it ourselves" —
+   rather than parsing the RIVM xlsx. The most-used Python port
+   gave up on programmatic extraction for water specifically.
+   Arko V1 ships water with GLO defaults from the main xlsx; the
+   companion country-specific xlsx for water defers with the rest
+   of the regionalisation bundle to V2. Flagging so future-me
+   knows the friction is expected, not a source-reading bug.
+
+**Consequences:**
+
+- `MethodRegistry::standard()` ships **5 methods** at Phase 1 exit:
+  AR6, AR5 (legacy parity, documented bonus), EF 3.1, CML-IA
+  baseline 4.8, ReCiPe 2016 Midpoint Hierarchist 1.1. The named
+  slate is 4-of-4 satisfied (AR6, EF 3.1, CML 2001 via CML-IA
+  baseline, ReCiPe 2016 Midpoint); the registry count of 5
+  includes AR5 as the legacy-parity bonus. Registration commit
+  should explain `r.len() == 5` so future-me reading the assertion
+  doesn't wonder why 5 instead of 4.
+- `FactorMatch` taxonomy stays at **5 variants** for Phase 1
+  (`Cas`, `CasOrigin`, `CasCompartment`, `FlowId`,
+  `NameAndCompartment`). No `CasRegion` in V1; deferred to V2
+  alongside the pipeline restructure.
+- `FactorMatch::matches` signature **unchanged**. No mirroring
+  cascade. No reader changes. Both parity smokes (EF carpet, beef
+  multi-process) stay bit-exact — no taxonomy or pipeline changes.
+- `ProcessMeta.geography` stays informational ("deferred to v0.3"
+  comment unchanged). Promotion to load-bearing happens in V2 when
+  the regionalisation bundle lands.
+- Per-factor source-comment template extended with the
+  `v1.1_20180117` version line and (for the 5
+  regionalised-in-source categories) the explicit "GLO default;
+  country-specific CFs from companion xlsx deferred to V2" line.
+  Water consumption carries the additional brightway-hardcoded-
+  precedent flag. Documented at `docs/licenses/recipe-2016-rivm.md`
+  for future preset entries derived from the same source.
+- License posture is "gratis with no explicit license terms" —
+  same as CML-IA baseline. Defensible for V1 (factual data,
+  different selection/arrangement, attribution preserved);
+  commercial-scale distribution would need explicit grant. Full
+  analysis at `docs/licenses/recipe-2016-rivm.md` (template
+  borrows from `cml-ia-leiden.md`).
+- Phase 1 method-preset exit criterion fully closed: 4-of-4 named
+  slate (AR6, EF 3.1, CML 2001 via CML-IA baseline, ReCiPe 2016).
+  Remaining Phase-1 punch-list: FactoredSolver + Phase 1 closeout
+  (`arko-engine v0.2.0` tag + retrospective doc + Phase 2 boundary
+  memo). LCAx reader and ILCD+EPD writer remain as Phase 2 V2
+  items per `D-0018`.
+- Session sequence accelerated by collapsing the planned
+  taxonomy-extension session into a non-session. Original plan
+  was three sessions (taxonomy + factors + registration); V1 =
+  GLO-only collapses to two (factors against existing matchers +
+  registration).
+
+**Open items:**
+
+- **Water consumption factor entry — known scope risk.** Plan
+  extra time per the brightway-hardcoded precedent. May require
+  manual transcription rather than programmatic extraction even
+  for the GLO-default values. Initial seed-test coverage may be
+  tighter than other V1 categories at first register; expand as
+  parsing edge cases are understood.
+- **POCP-ecosystems V2 trigger.** Surface user demand from real
+  users; ship in V2 alongside any other splits-beyond-EN-15804
+  variants if a single-POCP-axis preset shows up insufficient.
+- **USEtox toxicity slate scoping (V2).** Separate scoping decision
+  before factor entry. Will need paired EF 3.1 + CML-IA + ReCiPe
+  toxicity values for cross-witnessing (three independent factor
+  tables on the same matcher infrastructure). Same scope-discipline
+  pattern as V1 presets; do not collapse into "V2 is one bucket".
+- **Regionalisation bundle (V2).** `CasRegion` matcher + per-process
+  `C` build + Eq. 3 restructure (`h = Σₚ Cₚ · B[:,p] · s[p]`) +
+  reader region-extraction verification + 5 country-specific CF
+  tables (POCP-h, particulate matter, terrestrial acidification,
+  freshwater eutrophication, water consumption). Cleanly scoped
+  V2 work driven by real user demand for region-aware LCA. Region
+  vocabulary verification (ISO 3166-1 alpha-2/alpha-3, watershed
+  IDs) happens during V2 implementation alongside factor entry
+  for the country-specific tables.
+- **RIVM outreach (Phase 2-3).** Contact RIVM (ReCiPe coordination
+  via `recipe@rivm.nl` or the document author chain) to request
+  explicit grant for the redistributed CFs. Not blocking V1;
+  hygiene step for commercial-scale shipping. Same pattern as the
+  pending Leiden outreach in `D-0017`.
+- **Egalitarian / Individualist perspectives (V2-or-never).** Same
+  matcher infrastructure, different factor tables. Pure factor-
+  table addition; no design change. Track demand from real users;
+  ship if and when surfaced.
+
+---
+
 ## 2026-04-22 · `D-0018` — Phase-1 "EPDX" bullet closed via LCAx V1 writer; ILCD+EPD writer staged for Phase 2
 
 **Context:** The Phase-1 execution guide listed "EPDX read/write works"

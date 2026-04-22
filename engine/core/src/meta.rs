@@ -29,6 +29,11 @@ pub struct ProcessMeta {
 
     /// Free-form geography tag, e.g., `"ES"`, `"GLO"`, `"RER"`. Full
     /// regionalized impact is deferred to v0.3; this is informational.
+    /// `D-0019` (ReCiPe 2016 V1) confirmed region as process-level
+    /// data and identified this field as the V2 dispatch surface for
+    /// the regionalisation bundle (`CasRegion` matcher + per-process
+    /// `C` build + Eq. 3 restructure). Stays informational in V1;
+    /// promotion to load-bearing happens with the V2 bundle.
     #[serde(default)]
     pub geography: Option<String>,
 }

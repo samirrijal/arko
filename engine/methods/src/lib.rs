@@ -62,6 +62,7 @@ pub mod builder;
 pub mod cml_ia;
 pub mod ef_31;
 pub mod method;
+pub mod recipe_2016;
 pub mod registry;
 pub mod standard;
 
