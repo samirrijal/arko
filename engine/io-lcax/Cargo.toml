@@ -1,0 +1,32 @@
+[package]
+name = "arko-io-lcax"
+description = "Arko LCAx writer — emits a Project/Assembly/Product/EPD-shaped LCAx v3.4 document from an Arko Study + Computed pair. Closes the Phase-1 'EPDX' bullet via the format's living successor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arko-core.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# lcax_models carries the data types we serialise. The umbrella `lcax`
+# crate adds Python/JS bindings + conversion glue we don't need here.
+# lcax_core supplies `Country` (and date serde helpers) and is a
+# transitive dep of lcax_models; declaring it directly lets us name the
+# type in our signatures.
+lcax_models = "3.4"
+lcax_core = "3.4"
+
+[dev-dependencies]
+arko-methods.workspace = true
+arko-solvers-dense.workspace = true
+sprs.workspace = true

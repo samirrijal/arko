@@ -23,7 +23,7 @@ Every phase has:
 | Phase | Weeks | Calendar | Outcome |
 |---|---|---|---|
 | Phase 0 | 1-2 | ~May 2026 | Engine tagged v0.0.1, CI green, license chosen |
-| Phase 1 | 3-10 | ~May-July 2026 | Engine breadth complete (ILCD linker, EPDX, methods, databases) |
+| Phase 1 | 3-10 | ~May-July 2026 | Engine breadth complete (ILCD linker, LCAx writer V1, methods, databases) |
 | Phase 2 | 11-24 | ~Jul-Oct 2026 | Web UI MVP + first EPD renderer working end-to-end |
 | Phase 3 | 25-34 | ~Oct-Dec 2026 | EPD/PEF generation production-ready, verifier workflow |
 | Phase 4 | 35-48 | ~Jan-Apr 2027 | Polish, docs, Monte Carlo UI, sensitivity UI |
@@ -102,7 +102,7 @@ Write these down. Sign them. Put them somewhere you'll see them.
 
 **Exit criteria:**
 - ILCD bundles (multi-file) can be loaded into Arko Study
-- EPDX read/write works (at least the core schema)
+- LCAx V1 writer works (emits schema-conformant Project→Assembly→Product→EPD documents; EPDX was archived 2024-08-22, LCAx is the maintained successor — see `DECISIONS.md` `D-0018`). LCAx reader and ILCD+EPD writer deferred to Phase 2.
 - OpenLCA JSON-LD import works
 - Four method presets available: IPCC AR6 GWP100, ReCiPe 2016 Midpoint, EF 3.1, CML 2001
 - At least three free databases importable: ÖKOBAUDAT, Agribalyse, EF reference packages
@@ -121,11 +121,11 @@ The critical unblocker. Without this, none of the free EU databases work.
 - [ ] Add tests against a small synthetic ILCD bundle you construct manually
 - [ ] Add tests against a real ÖKOBAUDAT export (free download)
 
-**Week 5-6: EPDX and OpenLCA JSON-LD importers**
+**Week 5-6: LCAx V1 writer and OpenLCA JSON-LD importer**
 
-- [ ] EPDX — the standard digital-EPD format; importing means you can ingest competitor EPDs as reference
+- [ ] LCAx V1 — open exchange format for LCA results/EPDs, the maintained successor to the archived EPDX. Writer-only for V1 (reader deferred to Phase 2 alongside the ILCD+EPD writer, which is the actual Environdec submission format). See `DECISIONS.md` `D-0018` for the staged plan.
 - [ ] OpenLCA JSON-LD — importing means OpenLCA users can migrate to Arko later
-- [ ] Both go through the same `StudyImporter` trait you already have for ILCD
+- [ ] The OpenLCA reader goes through the same `StudyImporter` trait you already have for ILCD; LCAx is a `StudyExporter` (new trait, since the engine's first export path).
 
 **Week 7-8: Method presets**
 

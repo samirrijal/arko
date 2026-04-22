@@ -11,6 +11,26 @@ bullet. Keep entries short; link out to the richer record.
 
 ---
 
+- **2026-04-22** · **LCAx v3.4 writer V1 shipped — Phase 1 "EPDX"
+  execution-guide bullet closed via the successor format** —
+  new crate [`engine/io-lcax`](engine/io-lcax) emits
+  schema-conformant LCAx v3.4 `Project` documents from an Arko
+  `Study` + `Computed` pair. EPDX was archived by ocni-dtu
+  2024-08-22 in favour of LCAx (same maintainers, Apache-2.0,
+  `lcax_models` v3.4 on crates.io); closing the Phase-1 bullet via
+  the living successor rather than a dead format. V1 shape: single
+  public entry point `write_lcax_project(study, computed, metadata)`,
+  `EpdDocumentMetadata` config (named for Phase-2 ILCD+EPD reuse,
+  not LCAx-specific), synthetic single-Assembly/single-Product
+  `Project` wrapper (schema root-type constraint), all impact values
+  at `LifeCycleModule::A1A3` (truthful default until Phase 2-3
+  adds stage decomposition), `standard` enum maps `ef-3.1` →
+  `EN15804A2` and everything else → `UNKNOWN` with method identity
+  preserved in `EPD.comment`. 9 tests (7 unit + 2 smoke exercising
+  spec §16 pipeline → writer → JSON round-trip). Scope governed by
+  `D-0018` (staged plan — LCAx V1 now, ILCD+EPD V2 before the
+  Phase-2 EPD-renderer milestone). Phase 1 remaining punch list:
+  ReCiPe 2016 Midpoint + FactoredSolver.
 - **2026-04-22** · **CML-IA baseline V1 preset shipped — 4/4 method
   presets registered, Phase 1 method-preset exit criterion met** —
   [`engine/methods/src/cml_ia.rs`](engine/methods/src/cml_ia.rs)
