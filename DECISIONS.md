@@ -9,6 +9,83 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-23 · `D-0024` — Tier prices: Studio €4,900/yr, Team €13,900/yr, Enterprise custom
+
+**Context:** [`D-0022`](#d-0022) locked the Studio/Team/Enterprise
+tier shape but left prices open pending Imanol-network signal. Naïve
+seed in `D-0022` (Studio €49/mo, Team €199/mo) was anchored on
+generic SaaS comparables, not on the LCA-tooling market. Real
+anchors: SimaPro analyst ~€2,500/yr/seat (floor), GaBi enterprise
+€10k+/yr, openLCA Nexus database licenses €1k–€5k/yr per database
+on top of base tooling. EPD-producing consultancies in the Basque
+market clear willingness-to-pay around €5k–€20k/yr per firm.
+
+**Decision:** Annual list prices, EUR, ex-VAT:
+
+| Tier | Seats | Annual price | Effective €/seat/yr |
+|---|---|---|---|
+| Studio | 1 | **€4,900** | €4,900 |
+| Team | 3–5 (flat band) | **€13,900** | €4,633 → €2,780 (sliding by seat count) |
+| Enterprise | 6+ or custom | **contact-us** | — |
+
+The 2-seat case isn't a tier — push 2-seat orgs to Team (still
+cheaper than 2× Studio). Above 5 seats → Enterprise.
+
+**Reasoning, in descending weight:**
+
+1. **Anchored to LCA-tooling market reality, not generic SaaS.**
+   The naïve seed in `D-0022` was off by ~8× because it framed
+   Arko as horizontal SaaS. LCA practitioner tools are a vertical
+   B2B market where the floor is SimaPro at €2.5k/seat/yr; Arko's
+   value proposition (modern UI, EPD-aware workflow, in-browser WASM)
+   prices above the floor, below GaBi enterprise.
+2. **Team's flat band creates a natural Studio→Team upsell at 3 seats.**
+   3 Studio seats would be €14,700/yr; Team at 3 seats is €13,900/yr
+   *and* unlocks unlimited studies + premium DBs + more EPDs/month.
+   The price gradient is intentionally skewed to push consultancies
+   into Team — that's where Arko's EPD-throughput value lives.
+3. **At 5 seats Team is €2,780/seat/yr — competitive with SimaPro
+   per-seat.** A 5-person consultancy paying SimaPro is at ~€12,500/yr;
+   the same consultancy on Team pays €13,900/yr and gets the
+   EPD-aware workflow that SimaPro doesn't ship. That's the
+   conversion target.
+4. **Enterprise stays "contact-us" because the variance above 5 seats
+   is high.** A 10-person consultancy and a 50-person engineering
+   firm have different willingness-to-pay slopes; sales-led pricing
+   captures both without leaving money on the table or pricing out
+   the smaller end.
+
+**Consequences:**
+
+- Pricing page (Phase 2 deliverable per `D-0020`) shows three columns
+  with these annual prices; "billed annually" copy is the default;
+  monthly billing is **not** offered at v0.3.0 launch (see open
+  items).
+- Trial (14 days, per `D-0020`) gives Team-tier access; trial-end
+  conversion presents Team as the default with Studio shown as a
+  downgrade for single-practitioner workflows.
+- `subscriptions.tier` enum unchanged from `D-0022`; only the
+  `price_eur_annual` column populates with these values at seed time.
+- Redsys integration: COF-MIT charges hit annually for Studio and
+  Team; Enterprise contracts handled by direct invoice (Phase 2
+  ships invoice handling out-of-app — manual via accounting).
+
+**Open items:**
+
+- **Monthly billing option.** Defer until post-launch; if churn
+  signal suggests annual-only is too steep a commitment for Studio
+  practitioners, add monthly with ~15–20% premium over the
+  pro-rated annual. File then.
+- **Annual price escalator.** Whether prices increase year-over-year
+  or grandfather. Defer.
+- **Multi-year discount.** Defer until first Enterprise sale.
+
+**Supersedes-in-part:** [`D-0022`](#d-0022) "Open items" — tier
+prices section. Tier *gating* (seats × studies × EPDs × DB tier)
+remains as filed in `D-0022`.
+
+---
+
 ## 2026-04-23 · `D-0023` — i18n library: `next-intl` for Phase 2
 
 **Context:** [`D-0020`](#d-0020) commits to EN + ES UI from week 11.

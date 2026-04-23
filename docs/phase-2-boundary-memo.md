@@ -265,13 +265,14 @@ Filed before week 11 to unblock scaffold work:
 
 **Still open at week 11 (need user / Imanol input before locking):**
 
-10. **Tier pricing** — €/month per tier, annual discount magnitude.
-    Pending Imanol-network price-test conversation; naïve seed in
-    `D-0022` open items (Studio €49, Team €199, Enterprise contact-us)
-    is unverified. File as `D-00xx` after Imanol input.
-11. **Default locale** — Spanish-first (Basque-market positioning) or
+10. **Default locale** — Spanish-first (Basque-market positioning) or
     English-first (engine-narrative consistency). Filed in `D-0023`
     open items; defer to week 11 marketing-vs-product framing call.
+
+**Landed since boundary memo first draft:**
+
+- Tier pricing: Studio €4,900/yr, Team €13,900/yr (3–5 seats),
+  Enterprise contact-us. Annual-only at launch. [`D-0024`](../DECISIONS.md#d-0024).
 
 ### Day 3–5: scaffold
 
@@ -374,7 +375,7 @@ Per the Execution Guide, Tech Spec v2.0, and the
 | Org/role schema designed | ✅ (§3 above) |
 | Redsys sandbox credentials provisioned | ❌ — week-11 ask (BBVA lead time) |
 | Tier feature gating decided | ✅ ([`D-0022`](../DECISIONS.md#d-0022)) |
-| Tier prices decided | ❌ — pending Imanol price-test |
+| Tier prices decided | ✅ ([`D-0024`](../DECISIONS.md#d-0024): Studio €4.9k/yr, Team €13.9k/yr) |
 | i18n library chosen | ✅ ([`D-0023`](../DECISIONS.md#d-0023): `next-intl`) |
 | ES translator workflow set up | ❌ — week-11 ask (Imanol-network candidate?) |
 
