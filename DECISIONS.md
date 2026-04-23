@@ -9,6 +9,275 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-23 · `D-0028` — Design system: KarbonGarbi token reuse with explicit Arko divergences
+
+**Context:** [`boundary memo §2.3`](docs/phase-2-boundary-memo.md)
+default is shadcn/ui + Tailwind, "matches KarbonGarbi, reuse design
+system." KarbonGarbi's design system has documented constraints (per
+`feedback_design_system`: rounded-full buttons, `#16A34A` primary,
+`gray-100` borders, no alternating table rows). Some of those were
+KarbonGarbi-specific aesthetic choices that don't carry to Arko's
+practitioner-tool register (LCA users come from SimaPro/openLCA-Desktop
+information density; rounded-full reads as toy at that register).
+
+**Decision:** Copy KarbonGarbi's shadcn/ui + Tailwind setup wholesale;
+explicitly diverge on three axes documented up front:
+
+**Inherit from KarbonGarbi:**
+
+- Color tokens (`#16A34A` primary, gray scale, semantic colors)
+- Typography family + base scale
+- Spacing scale
+- shadcn/ui component selection + Radix primitive config
+- Form component patterns
+
+**Diverge in Arko:**
+
+| Axis | KarbonGarbi | Arko | Reason |
+|---|---|---|---|
+| Button radius | `rounded-full` | `rounded-md` | Practitioner-tool register; rounded-full reads as consumer/toy at SimaPro-comparable density |
+| Visual density | Comfortable line-height, generous padding | Tighter line-height, compact padding | Process Browser must show 50+ rows above the fold; LCA users expect dense data UIs |
+| Table alternating rows | None (gray-100 borders only) | Subtle alternating (`bg-gray-50` on odd rows) | 94k-flow EF reference package needs visual row anchoring; convention in SimaPro/openLCA |
+
+**Reasoning, in descending weight:**
+
+1. **KarbonGarbi shadcn config is reusable infrastructure.** Tailwind
+   config, design tokens, component primitive choices — saves
+   ~1 week of week-12 setup time. The divergences are leaf-level
+   overrides, not foundational rewrites.
+2. **The Arko user is an LCA practitioner, not a consumer.** SimaPro,
+   openLCA Desktop, GaBi all ship dense, information-rich UIs.
+   Practitioners are *trained* to read dense tables. Optimizing for
+   visual whitespace at that audience would actively hurt usability —
+   they'd see fewer rows, scroll more, lose context.
+3. **Process Browser viability requires alternating rows.** A 94k-flow
+   reference package displayed without row anchoring is a wall of
+   text. Alternating rows is the cheapest visual aid; the
+   KarbonGarbi "no alternating" preference came from B2B
+   dashboard contexts (smaller tables, more chrome) that don't
+   apply here.
+4. **`rounded-md` matches the EPD-output professional register.** The
+   document Arko produces is a regulated EPD — buyers (manufacturers,
+   procurement, certifiers) read it as a serious instrument.
+   `rounded-full` buttons in the producing tool create register
+   dissonance with the produced artifact.
+
+**Consequences:**
+
+- `apps/web/styles/tokens.css` mirrors KarbonGarbi's color/spacing/
+  typography tokens (copy-paste at week 12).
+- `apps/web/components/ui/` shadcn components installed with the
+  KarbonGarbi-baseline configuration, then patched per the divergence
+  table.
+- [`docs/arko-design-system.md`](docs/arko-design-system.md) lands
+  week 12 enumerating the inherits + divergences with code examples.
+  Future Arko-specific divergences require a new `D-00xx` entry.
+- KarbonGarbi `feedback_design_system` memory does **not** apply to
+  Arko (different product, different register); separate Arko
+  design-system memory will be written if the user surfaces
+  Arko-specific aesthetic preferences.
+
+**Open items:**
+
+- Typography scale (KarbonGarbi default, or one step smaller for
+  density)? Defer to first screen build (Process Browser, week 13–14)
+  when real content informs the call.
+- Dark mode at v0.3.0 or V2? Lean V2 (LCA practitioners run light
+  by convention; not worth Phase 2 budget).
+
+---
+
+## 2026-04-23 · `D-0027` — API server: defer Axum to week 18, WASM-in-browser only for Phase 2 launch
+
+**Context:** [`boundary memo §2.6`](docs/phase-2-boundary-memo.md)
+framed two paths: (a) Axum API server from day 1, (b) WASM-only with
+lazy Axum lazy-add at week 18 if needed. The boundary between "WASM
+handles it" and "needs server compute" was undefined at v0.2.0 —
+carpet smoke is 1×1, beef smoke is 5×5; Phase 2 production studies
+top out around 30×30. The §2.5 WASM compile spike (week 11 day 1)
+gates this decision.
+
+**Decision:** **WASM-in-browser only for Phase 2 v0.3.0.** No Axum
+server in the Phase 2 scaffold. Axum lazy-adds at week 18 (Calc
+Runner build) *only if* a real study hits a WASM ceiling. If the
+week-11 WASM spike fails outright, this decision gets revisited
+immediately.
+
+**Reasoning, in descending weight:**
+
+1. **Phase 2 study sizes fit WASM comfortably.** Imanol-shaped
+   single-product EPDs are 5–30 processes; well below any plausible
+   WASM memory or CPU bound. The Phase 1 beef parity smoke (5×5)
+   already exercises the relevant solver path; scaling that to 30×30
+   is well within `nalgebra` + `faer` browser capability.
+2. **WASM-only is architecturally simpler.** No client/server state
+   sync. No auth-pass-through to a separate API. No CORS, no rate
+   limiting, no per-tier compute-quota enforcement at server level.
+   The browser owns the calc; the backend owns persistence (Supabase).
+3. **Server compute lands when it earns its place.** Phase 3 brings
+   Monte Carlo + sensitivity sweeps via `FactoredSolver` — workloads
+   that *will* exceed reasonable WASM bounds. That's when Axum is
+   justified, with the actual workload to design against.
+4. **The week-11 spike is the explicit fallback gate.** If `cargo
+   build --target wasm32-unknown-unknown -p arko-engine` fails or
+   produces a 50MB binary, the Phase 2 architecture pivots to
+   Axum-from-day-1 with a `D-00xx` revision. Risk is bounded and
+   detectable in week 11.
+
+**Consequences:**
+
+- No `apps/api/` or Axum crate added during Phase 2 scaffold.
+- Calc Runner UI loads `arko-engine.wasm` via `wasm-bindgen` JS
+  bindings; calls run in a Web Worker to avoid blocking the main
+  thread.
+- Persistence layer is Supabase REST/RPC directly from Next.js — no
+  intermediate API tier.
+- `studies.serialized` JSON column holds the full `arko_core::Study`
+  payload; client serializes/deserializes via the same WASM module.
+- Phase 3 scope adds: Axum API crate, WASM↔server-handoff for
+  long-running calcs, job queue (likely PostgreSQL `LISTEN/NOTIFY`
+  initially, not Redis).
+
+**Revisit triggers (immediate `D-00xx`):**
+
+- WASM compile spike fails at week 11 day 1.
+- First real study exceeds 100×100 in Phase 2 (Imanol or beta user).
+- Calc time exceeds 5 seconds in-browser for any Phase-2-shaped study.
+
+**Open items:**
+
+- Web Worker vs main-thread WASM execution. Lean Worker (UI stays
+  responsive during multi-second calcs) but defer until calc-time
+  measurements at week 18.
+
+---
+
+## 2026-04-23 · `D-0026` — Hosting: Vercel for Phase 2 with Phase 4 self-host commitment
+
+**Context:** [`boundary memo §2.2`](docs/phase-2-boundary-memo.md)
+default is Vercel for Phase 2, self-host in Phase 4. Tension: Master
+Spec v4's EU-sovereignty narrative argues against Vercel; KarbonGarbi
+already runs on Hetzner+CloudNativePG and that pattern could be
+applied earlier. Quantified Execution Guide cost: ~30–50h Phase 4
+DevOps if deferred, ~20–30h up-front if self-hosted from week 11.
+
+**Decision:** **Vercel for Phase 2 (Hobby tier through development,
+Pro at first paying customer).** Phase 4 migrates to Hetzner +
+Coolify-or-equivalent + CloudNativePG, matching KarbonGarbi's
+self-host pattern. The Phase-4 commitment is part of this decision,
+not a vague "we'll see."
+
+**Reasoning, in descending weight:**
+
+1. **Velocity wins for Phase 2.** Vercel deploy-from-git is ~5min
+   setup; Hetzner + Coolify + CloudNativePG + ingress + TLS is
+   ~20–30h. Phase 2 has 17–20 weeks of feature work to deliver per
+   `D-0021`; spending a week up front on infra that will be replaced
+   in Phase 4 is the wrong place to invest.
+2. **WASM-only architecture (`D-0027`) makes Vercel particularly
+   well-suited.** The browser runs the engine; Vercel just serves
+   static assets + Next.js SSR/RSC. No long-running compute,
+   no special server runtimes — matches Vercel's model exactly.
+3. **Sovereignty narrative is a Phase 4+ concern.** Phase 2
+   customers (Imanol's Basque consultancy network) aren't asking
+   "where is the compute hosted." Enterprise customers will, in
+   Phase 4 — that's when the Hetzner migration earns its keep.
+4. **Vercel cost is bounded and predictable.** Hobby tier covers
+   development; Pro tier ($20/mo) covers Phase 2 launch traffic;
+   even at 100 paying customers, Vercel cost stays well below the
+   eventual Phase 4 self-host TCO crossover point.
+
+**Consequences:**
+
+- `apps/web/` deploys to Vercel; project name `arko-web`.
+- Postgres stays Supabase (separate from compute hosting); Phase 4
+  migrates Postgres to CloudNativePG on Hetzner alongside the app.
+- Domain: `app.arko.earth` (production), `staging.arko.earth`
+  (preview/staging). DNS + domain provisioning is GTM-track work
+  per `project_arko_gtm_early_start` memory.
+- Vercel Edge config disabled by default; we want predictable single-
+  region behavior over edge-distribution complexity at Phase 2 scale.
+- Phase 4 migration is committed work, not aspirational — gets a
+  Phase 4 boundary memo entry when Phase 3 closes.
+
+**Migration triggers (revisit before Phase 4 if any hit):**
+
+- First enterprise customer asks about self-hosted deployment.
+- Vercel monthly cost exceeds €500.
+- Vercel TOS or pricing change materially impacts terms.
+
+**Open items:**
+
+- Vercel team plan vs personal account. Lean: personal until first
+  collaborator (Imanol or contractor), then upgrade.
+- Preview deploys per PR? Lean yes (low cost, high feedback value).
+
+---
+
+## 2026-04-23 · `D-0025` — Auth: Supabase Auth for Phase 2 with explicit Keycloak migration trigger
+
+**Context:** [`boundary memo §2.1`](docs/phase-2-boundary-memo.md)
+default is Supabase Auth for Phase 2, "we'll migrate to Keycloak
+later." Tension: KarbonGarbi already runs Supabase Auth (low-friction
+reuse), but Master Spec v4 lists Keycloak for Arko on EU-sovereignty
+grounds. Migrating auth mid-product is high-blast-radius; the
+"we'll migrate" framing was identified as a deferred decision, not
+a foregone conclusion.
+
+**Decision:** **Supabase Auth for Phase 2** with explicit migration
+triggers (below). Email + password + password reset only at v0.3.0
+launch; OAuth providers (Google, Microsoft) added on demand if
+Imanol's network requests them. SSO/SAML deferred to Phase 4 per
+`D-0022` (Enterprise tier feature).
+
+**Reasoning, in descending weight:**
+
+1. **KarbonGarbi pattern reuse is a real efficiency win.** The
+   Supabase Auth integration code, RLS patterns, JWT handling, and
+   password-reset flow are reusable from the KarbonGarbi codebase.
+   Reuse saves ~1–2 weeks vs greenfield Keycloak setup.
+2. **Auth migration is a bounded one-way door, not a permanent one.**
+   Supabase Auth → Keycloak migration is a known operation: bulk
+   user export, password-hash format conversion (or forced reset on
+   first login post-migration), JWT issuer swap. ~2–3 weeks of
+   focused work when triggered. Acceptable Phase 4 cost.
+3. **Phase 2 customer profile doesn't ask sovereignty questions.**
+   Imanol's Basque consultancy network cares about whether the tool
+   works, not where the auth provider is incorporated. Enterprise
+   customers (Phase 4+) will ask — that's when Keycloak earns its
+   place.
+4. **Supabase Auth ships Postgres RLS integration for free.** The
+   `auth.uid()` function in RLS policies is the cleanest way to
+   enforce org-scoped data access (per `D-0020` org/role model).
+   Keycloak would require either custom JWT-claim-to-RLS bridging
+   or moving authorization out of Postgres — both more work.
+
+**Consequences:**
+
+- `apps/web/lib/auth/` uses `@supabase/ssr` + `@supabase/supabase-js`.
+- Users live in Supabase Auth's `auth.users` table; `public.org_members`
+  references `auth.users.id` via FK.
+- Email templates (signup confirmation, password reset, magic link
+  if enabled) configured in Supabase dashboard; ES translations land
+  via `next-intl` per `D-0023`.
+- RLS policies on every `public.*` table keyed off `auth.uid()` and
+  `org_members.role`.
+- No SSO/SAML at v0.3.0 (Enterprise feature, Phase 4+).
+
+**Migration triggers (revisit if any hit):**
+
+- First enterprise customer asks about self-hosted auth, OR
+- ARR crosses €100k (signal that revenue justifies the migration cost), OR
+- Supabase pricing/TOS change makes Pro tier cost-prohibitive
+
+**Open items:**
+
+- OAuth provider enablement (Google, Microsoft) — defer to first
+  customer request.
+- Magic-link auth — defer; password+reset is sufficient for Phase 2.
+
+---
+
 ## 2026-04-23 · `D-0024` — Tier prices: Studio €4,900/yr, Team €13,900/yr, Enterprise custom
 
 **Context:** [`D-0022`](#d-0022) locked the Studio/Team/Enterprise

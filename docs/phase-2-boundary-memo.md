@@ -243,14 +243,21 @@ and produces a Phase 2 work surface.
    substance present in both ILCD and openLCA fixtures; fix reader if
    needed. Output: a passing test, or a `D-00xx` deferral with reasoning.
 
-### Day 2–3: architecture decisions land as `D-00xx` entries
+### §2 architecture decisions — landed at boundary (2026-04-23)
 
-3. **Auth decision** (`D-00xx`) — Supabase or Keycloak; trigger
-   conditions for migration if Supabase.
-4. **Hosting decision** (`D-00xx`) — Vercel or self-hosted from day 1.
-5. **API server decision** (`D-00xx`) — day 1 or week 18.
-6. **Design system divergence** (`D-00xx`) — which KarbonGarbi tokens
-   carry over, which Arko diverges on.
+Filed before week 11 to lock the scaffold's foundation before
+boilerplate locks them by side-effect:
+
+3. **Auth: Supabase Auth** with Keycloak migration triggers.
+   [`D-0025`](../DECISIONS.md#d-0025).
+4. **Hosting: Vercel** for Phase 2; Phase 4 self-host commitment to
+   Hetzner + CloudNativePG. [`D-0026`](../DECISIONS.md#d-0026).
+5. **API server: defer Axum to week 18.** WASM-in-browser only at
+   v0.3.0 launch; revisit if WASM spike fails or any study exceeds
+   100×100. [`D-0027`](../DECISIONS.md#d-0027).
+6. **Design system: KarbonGarbi tokens with explicit divergences**
+   on button radius, density, and table alternating rows.
+   [`D-0028`](../DECISIONS.md#d-0028).
 
 ### `D-0020` follow-on decisions — landed at boundary (2026-04-23)
 
@@ -276,10 +283,11 @@ Filed before week 11 to unblock scaffold work:
 
 ### Day 3–5: scaffold
 
-11. **Repo creation** — `goibix/arko-app` (Next.js 15 + TS + Tailwind +
-    shadcn/ui) per the §2.3 ratified design system.
-12. **Auth + org model wired** per §2.2 decision; users land in a
-    default org on signup, role = `owner`.
+11. **Repo creation** — `apps/web/` sibling to `engine/` in the
+    `samirrijal/arko` monorepo (Next.js 15 + TS + Tailwind + shadcn/ui
+    per `D-0028`); `pnpm-workspace.yaml` at repo root.
+12. **Auth + org model wired** — Supabase Auth per `D-0025`; users
+    land in a default org on signup, role = `owner`.
 13. **Database scaffolded** — Postgres schema for §3 tables (account
     layer + study layer), migrations in repo. Billing tables included
     even if Redsys integration isn't wired yet.
@@ -292,8 +300,9 @@ Filed before week 11 to unblock scaffold work:
 16. **WASM integration** — engine compiled, loaded by a smoke page that
     runs the carpet calc in-browser and shows the result. Closes the
     §2.5 spike.
-17. **Deploy pipeline** — first deployment to chosen target (Vercel or
-    self-hosted), even if it's a "Hello, Arko" page.
+17. **Deploy pipeline** — first Vercel deployment from `apps/web/` per
+    `D-0026`, even if it's a "Hello, Arko" page. Project name
+    `arko-web`; preview deploys per PR enabled.
 
 ### Day 5: Imanol scope confirmation (optional but encouraged)
 
@@ -356,9 +365,12 @@ Per the Execution Guide, Tech Spec v2.0, and the
 
 | Item | Status at v0.2.0 |
 |---|---|
-| Engine API stable enough to compile to WASM | Untested; week-11 spike |
+| Engine API stable enough to compile to WASM | Untested; week-11 spike (gates [`D-0027`](../DECISIONS.md#d-0027)) |
 | `MethodRegistry::standard()` covers EN 15804+A2 core for first EPD render | ✅ (EF 3.1 + CML-IA + ReCiPe + AR6) |
 | Reader compartment shapes consistent across ILCD and openLCA | Untested; week-11 spike |
+| Hosting target chosen | ✅ ([`D-0026`](../DECISIONS.md#d-0026): Vercel; Phase 4 → Hetzner) |
+| API server scope decided | ✅ ([`D-0027`](../DECISIONS.md#d-0027): WASM-only Phase 2; Axum at week 18 if needed) |
+| Design system foundation chosen | ✅ ([`D-0028`](../DECISIONS.md#d-0028): KarbonGarbi tokens + 3 documented divergences) |
 | `FactoredSolver` available for the in-browser sensitivity-sweep path | ✅ (`fe30079`) |
 | LCAx writer available for one of two Phase-2 EPD output paths | ✅ (`6cc5c03`) |
 | ILCD+EPD writer available for the program-operator submission path | ❌ (V2, `D-0018`) — Phase 2 ships Environdec via LCAx + custom Word/PDF templating |
@@ -371,7 +383,7 @@ Per the Execution Guide, Tech Spec v2.0, and the
 
 | Item | Status at v0.2.0 |
 |---|---|
-| Auth provider chosen (Supabase vs Keycloak) | ❌ — week-11 `D-00xx` |
+| Auth provider chosen (Supabase vs Keycloak) | ✅ ([`D-0025`](../DECISIONS.md#d-0025): Supabase Auth + Keycloak migration triggers) |
 | Org/role schema designed | ✅ (§3 above) |
 | Redsys sandbox credentials provisioned | ❌ — week-11 ask (BBVA lead time) |
 | Tier feature gating decided | ✅ ([`D-0022`](../DECISIONS.md#d-0022)) |
@@ -379,8 +391,11 @@ Per the Execution Guide, Tech Spec v2.0, and the
 | i18n library chosen | ✅ ([`D-0023`](../DECISIONS.md#d-0023): `next-intl`) |
 | ES translator workflow set up | ❌ — week-11 ask (Imanol-network candidate?) |
 
-Two engine-side items become week-11 spikes. Account/billing layer is
-all greenfield — week 11 land architecture decisions, week 12+ build.
+Two engine-side items remain as week-11 spikes (WASM compile gates
+`D-0027`; compartment parity gates Process Browser correctness on
+EF 3.1 AC/EU). All §2 architecture decisions are now landed —
+scaffold work in week 11 day 3–5 builds against ratified defaults
+rather than risking side-effect lock-in via boilerplate.
 
 ---
 
