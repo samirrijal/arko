@@ -1,0 +1,16 @@
+{
+  "name": "arko",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Arko — open LCA engine and web application",
+  "scripts": {
+    "dev": "pnpm --filter @arko/web dev",
+    "build": "pnpm --filter @arko/web build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
