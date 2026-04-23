@@ -252,24 +252,26 @@ and produces a Phase 2 work surface.
 6. **Design system divergence** (`D-00xx`) — which KarbonGarbi tokens
    carry over, which Arko diverges on.
 
-### Day 2–3: `D-0020` follow-on decisions
+### `D-0020` follow-on decisions — landed at boundary (2026-04-23)
 
-7. **Timeline shape A vs B** (`D-00xx`) — A = stretch Phase 2 from 14
-   to 17–20 weeks to absorb billing/orgs/i18n; B = keep the 14-week
-   window and defer Scenario Comparison to Phase 3. Pick before week-1
-   exits, because the screen ordering in §1 changes under shape B.
-8. **Tier feature gating** (`D-00xx`) — what each of Studio / Team /
-   Enterprise actually unlocks (study count, org seats, EPD generation
-   throttling, premium databases). Without this, the billing UI can't
-   be built.
-9. **Tier pricing** (`D-00xx`) — €/month for each tier, monthly vs
-   annual, free-trial length (default 14 days per spec). Shape: list
-   prices in the decision; revisit only if Imanol's network signals
-   they're off-market.
-10. **i18n source-of-truth format** (`D-00xx`) — `next-intl` JSON
-    bundles vs `react-i18next` vs Lingui. Default lean: `next-intl`
-    (Next.js 15 native). Locks the translator workflow for the next 14
-    weeks.
+Filed before week 11 to unblock scaffold work:
+
+7. **Timeline shape A** — stretch Phase 2 to ~17–20 weeks; ship all
+   five screens. [`D-0021`](../DECISIONS.md#d-0021).
+8. **Tier feature gating** — Studio/Team/Enterprise three-axis split
+   (seats × studies × EPDs/month + DB tier). [`D-0022`](../DECISIONS.md#d-0022).
+9. **i18n library: `next-intl`** — Next.js 15 native, App Router-aware,
+   JSON bundles per locale. [`D-0023`](../DECISIONS.md#d-0023).
+
+**Still open at week 11 (need user / Imanol input before locking):**
+
+10. **Tier pricing** — €/month per tier, annual discount magnitude.
+    Pending Imanol-network price-test conversation; naïve seed in
+    `D-0022` open items (Studio €49, Team €199, Enterprise contact-us)
+    is unverified. File as `D-00xx` after Imanol input.
+11. **Default locale** — Spanish-first (Basque-market positioning) or
+    English-first (engine-narrative consistency). Filed in `D-0023`
+    open items; defer to week 11 marketing-vs-product framing call.
 
 ### Day 3–5: scaffold
 
@@ -371,9 +373,9 @@ Per the Execution Guide, Tech Spec v2.0, and the
 | Auth provider chosen (Supabase vs Keycloak) | ❌ — week-11 `D-00xx` |
 | Org/role schema designed | ✅ (§3 above) |
 | Redsys sandbox credentials provisioned | ❌ — week-11 ask (BBVA lead time) |
-| Tier feature gating decided | ❌ — week-11 `D-00xx` |
-| Tier prices decided | ❌ — week-11 `D-00xx` |
-| i18n library chosen | ❌ — week-11 `D-00xx` (default lean: `next-intl`) |
+| Tier feature gating decided | ✅ ([`D-0022`](../DECISIONS.md#d-0022)) |
+| Tier prices decided | ❌ — pending Imanol price-test |
+| i18n library chosen | ✅ ([`D-0023`](../DECISIONS.md#d-0023): `next-intl`) |
 | ES translator workflow set up | ❌ — week-11 ask (Imanol-network candidate?) |
 
 Two engine-side items become week-11 spikes. Account/billing layer is

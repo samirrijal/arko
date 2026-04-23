@@ -9,6 +9,183 @@ Format: newest-first. Dates are `YYYY-MM-DD`, local to the author.
 
 ---
 
+## 2026-04-23 · `D-0023` — i18n library: `next-intl` for Phase 2
+
+**Context:** [`D-0020`](#d-0020) commits to EN + ES UI from week 11.
+The library choice locks the translator workflow, the message-key
+shape, and the per-screen developer ergonomics for the next 14+ weeks.
+Three real candidates: `next-intl` (Next.js 15 native, App Router-
+aware), `react-i18next` (most battle-tested, framework-agnostic), and
+Lingui (most ergonomic compile-time extraction, smaller community).
+
+**Decision:** Use **`next-intl`** for Phase 2.
+
+**Reasoning, in descending weight:**
+
+1. **Native Next.js 15 / App Router integration.** No bridge layer
+   between RSC boundaries and translation lookups; `next-intl` is
+   designed for App Router server components. `react-i18next` requires
+   provider scaffolding around server/client boundaries that Next.js
+   13+ made awkward.
+2. **Zero runtime translation overhead.** Messages bundled per locale
+   per route segment; only the active-locale bundle hits the wire.
+   Matters for Phase 2's WASM-engine-in-browser story (page weight is
+   already the bottleneck).
+3. **Two-locale scope makes ergonomic differences negligible.**
+   Lingui's compile-time extraction shines at 6+ locales; at EN + ES
+   the manual key maintenance is trivial. Picking the heavier tool
+   for headroom we don't yet need is premature.
+4. **Imanol-network translators don't need a special pipeline.** JSON
+   message bundles in `messages/en.json` and `messages/es.json` are
+   reviewable by any Spanish-speaking collaborator without setup.
+
+**Consequences:**
+
+- Adds `next-intl` dependency at week-11 scaffold time.
+- Locale files committed to `apps/web/messages/{en,es}.json` from
+  day 1; every PR that adds a screen also adds both locale files.
+- Locale switch via URL prefix (`/en/...`, `/es/...`) — `next-intl`
+  default routing.
+
+**Open items:**
+
+- Default locale (Spanish for Basque-market positioning, or English
+  for global engine narrative consistency)? Defer to week 11 when
+  the marketing-vs-product framing for the homepage is clearer.
+
+---
+
+## 2026-04-23 · `D-0022` — Tier feature gating: Studio / Team / Enterprise three-axis split (seats × studies × EPDs)
+
+**Context:** [`D-0020`](#d-0020) commits to three subscription tiers
+named Studio / Team / Enterprise (per the product spec). Tier prices
+are deferred (see "Open items" below — pending Imanol-network signal).
+What each tier *unlocks* needs to be decided independently of price,
+because the billing UI and the in-app gates can't be built without it.
+
+**Decision:** Three-axis gating model — **users (org seats) ×
+active studies × EPDs/month**, plus database tier:
+
+| Axis | Studio | Team | Enterprise |
+|---|---|---|---|
+| Users / org | 1 | 5 | unlimited |
+| Active studies | 5 | unlimited | unlimited |
+| EPDs / month | 1 | 5 | unlimited |
+| Database access | Free DBs only (USDA LCA Commons, ÖKOBAUDAT, JRC EF reference) | Free DBs + premium DBs once licensed | All databases incl. ecoinvent (Phase 4+) |
+| Support | Email best-effort | Email same-business-day | SLA + dedicated channel (Phase 4+) |
+| SSO / SAML | — | — | Phase 4+ |
+
+"Active studies" = studies in non-archived state. Archiving is free
+and unlimited (so Studio users aren't punished for accumulating
+historical work; they just have to archive before starting a 6th).
+
+EPD throttling is per-org per-calendar-month, resets on the 1st.
+
+**Reasoning, in descending weight:**
+
+1. **Matches the SaaS-for-consultancies shape Imanol's network
+   already understands.** SimaPro / openLCA-cloud / GaBi all gate on
+   seats and study counts. Reading the gating model takes one glance.
+2. **EPDs/month is the value-meter that maps to revenue.** Generating
+   an EPD is the highest-value action a user takes; a consultancy
+   producing 20 EPDs/year (Team-shaped) is fundamentally different
+   from a single practitioner doing 1–2 EPDs/year (Studio-shaped).
+   Throttling here matches actual willingness-to-pay slope.
+3. **Free-DB-only at Studio matches license reality.** USDA + ÖKOBAUDAT
+   + JRC EF cover the construction/agriculture/food spans that
+   single-practitioner studies typically need. Premium databases
+   (ecoinvent et al.) carry per-seat licensing costs Arko can't
+   subsidize at €49/mo.
+4. **SSO behind Enterprise leaves the door open for Phase 4 SAML
+   work.** Putting SSO in Team would force the implementation forward
+   into Phase 2; gating it to Enterprise keeps the Phase 4 placement
+   intact (per [`D-0020`](#d-0020) carve-outs).
+
+**Consequences:**
+
+- Billing UI shows three columns with these axes; copy lives in
+  `messages/{en,es}.json` from day 1.
+- `subscriptions.tier` enum (`studio` / `team` / `enterprise`) drives
+  feature flags read at every gated action (study creation, EPD
+  generation, user invite, premium DB access).
+- Need a "you've hit your monthly EPD limit, upgrade or wait until
+  the 1st" empty state — design at EPD Output screen build time.
+- Trial users (14-day, per [`D-0020`](#d-0020)) get **Team-tier**
+  access during trial — not Enterprise — to avoid setting an
+  expectation the trial-ender can't keep on Studio.
+
+**Open items:**
+
+- Tier prices (€/month, monthly vs annual discount): unresolved,
+  pending Imanol-network price-test conversation. Comparable
+  anchors: SimaPro analyst ~€2,500/yr, openLCA Nexus DBs €1k–€5k/yr.
+  Naïve seed: Studio €49/mo, Team €199/mo, Enterprise "contact us" —
+  but lock only after Imanol input. Filed separately when decided.
+- Whether premium DBs are bundled in Team vs sold à la carte. Lean:
+  bundled (simpler SKU; ecoinvent licensing is the only one that
+  forces à la carte, and that's Phase 4).
+- Annual discount magnitude (10%? 20%?) — defer until pricing lands.
+
+---
+
+## 2026-04-23 · `D-0021` — Phase 2 timeline shape: stretch (shape A) over rescope (shape B)
+
+**Context:** [`D-0020`](#d-0020) added ~3–5 weeks of scope to Phase 2
+(billing + orgs + i18n). The boundary memo
+([`docs/phase-2-boundary-memo.md`](docs/phase-2-boundary-memo.md) §1,
+§5, §8) framed two timeline shapes:
+
+- **Shape A:** stretch Phase 2 from 14 weeks → 17–20 weeks; ship all
+  five screens (Process Browser, Study Builder, Calc Runner,
+  Contribution Analysis, Scenario Comparison) + EPD output + the
+  D-0020 scope. v0.3.0 tags late Q4 2026.
+- **Shape B:** keep the 14-week window; defer Scenario Comparison to
+  Phase 3. v0.3.0 tags Q3 2026 with four screens + EPD output.
+
+**Decision:** **Shape A — stretch the timeline.** All five screens
+plus EPD output plus D-0020 scope ship at v0.3.0.
+
+**Reasoning, in descending weight:**
+
+1. **Scenario Comparison is the screen that demonstrates Arko's
+   thesis.** "Pin two studies side-by-side, see which design choices
+   move the impact" is the answer to *why use Arko over a
+   spreadsheet* for design-stage practitioners. Shipping Phase 2
+   without it leaves a hole in the sales conversation that Imanol's
+   network would notice immediately.
+2. **The v0.3.0 demo to Imanol (week 24, or stretched-equivalent)
+   needs the full thesis.** Per
+   [`feedback_imanol_arko_session_prep`](../C--Users-hical-Desktop-karbongarbi/memory/feedback_imanol_arko_session_prep.md):
+   the closing question is "1–10, how close is this to something
+   you'd actually use?" Shipping a four-screen Arko forces him to
+   imagine the fifth screen — that imagination penalty is worth
+   3–6 weeks of slip.
+3. **Phase 3 already has its own scope** (multiple EPD templates,
+   verifier workflow, PEF, lock+audit+signature). Adding Scenario
+   Comparison to Phase 3 would push *Phase 3's* exit out, not
+   compress Phase 2's. Net schedule cost is roughly equal; the
+   product cost differs.
+4. **Pricing the stretch:** ~3–5 weeks of additional Phase 2 work
+   pushes v0.3.0 from late Q3 2026 to late Q4 2026 / early Q1 2027.
+   Phase 5 (first paying customer) shifts the same amount. Acceptable
+   given that the alternative is shipping a weaker Phase 2.
+
+**Consequences:**
+
+- Phase 2 window: weeks 11 → ~31 (was 11 → 24).
+- Phase 3 window shifts: was weeks 25–34, now ~32–41.
+- Phase 4, Phase 5 shift the same ~6–8 weeks.
+- Boundary memo §1 deliverables table stays as-is (5 screens + EPD).
+- Boundary memo §8 hinge stays as-is (5 screens, not 4).
+
+**Open items:**
+
+- Whether the ~6–8 week downstream slip changes the Phase 5
+  "first paying customer" quarter for Imanol's expectations.
+  Surface in the next Imanol conversation as context, not as ask.
+
+---
+
 ## 2026-04-22 · `D-0020` — Phase 2 scope expansion: billing (Redsys), org/project hierarchy with role management, EN+ES UI all pulled forward from Phase 4 to Phase 2
 
 **Context:** The Execution Guide places billing, GDPR, legal pages, and
